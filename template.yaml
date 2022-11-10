@@ -1,4 +1,44 @@
+# Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"). You may not use this file except in compliance with the License. 
+# A copy of the License is located at
+#    http://aws.amazon.com/apache2.0/
+# or in the "license" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, 
+# either express or implied. See the License for the specific language governing permissions and limitations under the License.
+
+
+AWSTemplateFormatVersion: '2010-09-09'
+Description: This CloudFormation Template deploys a Glue Catalog entry for the MIMIC-IV dataset in the AWS Open Data Registry and a Glue Notebook to run studies against it.
+ 
+
 Resources:
+
+  MIMICNotebookInstance:
+    Type: "AWS::SageMaker::NotebookInstance"
+    Properties:
+      NotebookInstanceName: !Sub "MIMIC-Notebook"
+      InstanceType: "ml.t3.medium"
+      DefaultCodeRepository: "https://github.com/MIT-LCP/mimic-iv-datathon"
+      RoleArn: !GetAtt ExecutionRole.Arn
+  ExecutionRole: 
+    Type: "AWS::IAM::Role"
+    Properties: 
+      AssumeRolePolicyDocument: 
+        Version: "2012-10-17"
+        Statement: 
+          - 
+            Effect: "Allow"
+            Principal: 
+              Service: 
+                - "sagemaker.amazonaws.com"
+            Action: 
+              - "sts:AssumeRole"
+      Path: "/"
+      ManagedPolicyArns: 
+        - "arn:aws:iam::aws:policy/AWSGlueConsoleFullAccess"
+        - "arn:aws:iam::aws:policy/AmazonAthenaFullAccess"
+        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+
   MIMICIVDB:
     Type: AWS::Glue::Database
     Properties:
@@ -1551,3 +1591,11 @@ Resources:
         TableType: EXTERNAL_TABLE
     Metadata:
       aws:cdk:path: MimicivGlueDbStack/admissions-parquet
+
+
+Outputs:
+
+  MIMICJupyterNotebook:
+    Value: !Join ['', ['https://', !Ref 'AWS::Region', '.console.aws.amazon.com/sagemaker/home?region=', !Ref 'AWS::Region', '#/notebook-instances/openNotebook/MIMIC-Notebook?view=classic']]
+  MIMICAthenaforSQL:
+    Value: !Join ['', ['https://', !Ref 'AWS::Region', '.console.aws.amazon.com/athena/home?force&amp;region=', !Ref 'AWS::Region', '#query']]
