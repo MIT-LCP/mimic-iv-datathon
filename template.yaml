@@ -1,44 +1,55 @@
 # Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
-# Licensed under the Apache License, Version 2.0 (the "License"). You may not use this file except in compliance with the License. 
+# Licensed under the Apache License, Version 2.0 (the "License"). You may not use this file except in compliance with the License.
 # A copy of the License is located at
 #    http://aws.amazon.com/apache2.0/
-# or in the "license" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, 
+# or in the "license" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the License for the specific language governing permissions and limitations under the License.
 
-
-AWSTemplateFormatVersion: '2010-09-09'
-Description: This CloudFormation Template deploys a Glue Catalog entry for the MIMIC-IV dataset in the AWS Open Data Registry and a Glue Notebook to run studies against it.
- 
+AWSTemplateFormatVersion: "2010-09-09"
+Description: This CloudFormation Template deploys a Glue Catalog entry for the MIMIC-IV dataset in the AWS Open Data Registry and an Amazon Sagemaker Notebook instance to run studies against it.
 
 Resources:
-
-  MIMICNotebookInstance:
-    Type: "AWS::SageMaker::NotebookInstance"
+  NotebookInstanceRoleE8123527:
+    Type: AWS::IAM::Role
     Properties:
-      NotebookInstanceName: !Sub "MIMIC-Notebook"
-      InstanceType: "ml.t3.medium"
-      DefaultCodeRepository: "https://github.com/MIT-LCP/mimic-iv-datathon"
-      RoleArn: !GetAtt ExecutionRole.Arn
-  ExecutionRole: 
-    Type: "AWS::IAM::Role"
-    Properties: 
-      AssumeRolePolicyDocument: 
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: sagemaker.amazonaws.com
         Version: "2012-10-17"
-        Statement: 
-          - 
-            Effect: "Allow"
-            Principal: 
-              Service: 
-                - "sagemaker.amazonaws.com"
-            Action: 
-              - "sts:AssumeRole"
-      Path: "/"
-      ManagedPolicyArns: 
-        - "arn:aws:iam::aws:policy/AWSGlueConsoleFullAccess"
-        - "arn:aws:iam::aws:policy/AmazonAthenaFullAccess"
-        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
-
+      Description: Amazon Sagemaker role for use with MIMIC-IV
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/AWSGlueConsoleFullAccess
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/AmazonAthenaFullAccess
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/AmazonS3FullAccess
+    Metadata:
+      aws:cdk:path: MimicivParquetDatabaseStack/NotebookInstanceRole/Resource
+  MIMICNotebookInstance:
+    Type: AWS::SageMaker::NotebookInstance
+    Properties:
+      InstanceType: ml.t3.medium
+      RoleArn:
+        Fn::GetAtt:
+          - NotebookInstanceRoleE8123527
+          - Arn
+      DefaultCodeRepository: https://github.com/MIT-LCP/mimic-iv-datathon
+    Metadata:
+      aws:cdk:path: MimicivParquetDatabaseStack/MIMICNotebookInstance
   MIMICIVDB:
     Type: AWS::Glue::Database
     Properties:
@@ -48,7 +59,7 @@ Resources:
         Description: MIMIC-IV Database
         Name: mimiciv
     Metadata:
-      aws:cdk:path: MimicivGlueDbStack/MIMICIVDB
+      aws:cdk:path: MimicivParquetDatabaseStack/MIMICIVDB
   admissions:
     Type: AWS::Glue::Table
     Properties:
@@ -60,13 +71,8 @@ Resources:
         Description: mimic-iv admissions table
         Name: admissions
         Parameters:
-          skip.header.line.count: "1"
-          compressionType: gzip
-          classification: csv
-          columnsOrdered: "true"
-          areColumnsQuoted: "true"
-          delimiter: ","
-          typeOfData: file
+          classification: parquet
+          useGlueParquetWriter: "true"
         StorageDescriptor:
           Columns:
             - Name: subject_id
@@ -74,11 +80,11 @@ Resources:
             - Name: hadm_id
               Type: bigint
             - Name: admittime
-              Type: string
+              Type: timestamp
             - Name: dischtime
-              Type: string
+              Type: timestamp
             - Name: deathtime
-              Type: string
+              Type: timestamp
             - Name: admission_type
               Type: string
             - Name: admission_location
@@ -94,21 +100,19 @@ Resources:
             - Name: race
               Type: string
             - Name: edregtime
-              Type: string
+              Type: timestamp
             - Name: edouttime
-              Type: string
+              Type: timestamp
             - Name: hospital_expire_flag
-              Type: string
-          InputFormat: org.apache.hadoop.mapred.TextInputFormat
-          Location: s3://mimiciv-physionet/athena/hosp/admissions/
-          OutputFormat: org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat
+              Type: bigint
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/hosp/admissions/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
           SerdeInfo:
-            Parameters:
-              field.delim: ","
-            SerializationLibrary: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
         TableType: EXTERNAL_TABLE
     Metadata:
-      aws:cdk:path: MimicivGlueDbStack/admissions
+      aws:cdk:path: MimicivParquetDatabaseStack/admissions
   dhcpcs:
     Type: AWS::Glue::Table
     Properties:
@@ -120,33 +124,26 @@ Resources:
         Description: mimic-iv d_hcpcs table
         Name: d_hcpcs
         Parameters:
-          skip.header.line.count: "1"
-          compressionType: gzip
-          classification: csv
-          columnsOrdered: "true"
-          areColumnsQuoted: "true"
-          delimiter: ","
-          typeOfData: file
+          classification: parquet
+          useGlueParquetWriter: "true"
         StorageDescriptor:
           Columns:
             - Name: code
               Type: string
             - Name: category
-              Type: string
+              Type: bigint
             - Name: long_description
               Type: string
             - Name: short_description
               Type: string
-          InputFormat: org.apache.hadoop.mapred.TextInputFormat
-          Location: s3://mimiciv-physionet/athena/hosp/d_hcpcs/
-          OutputFormat: org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/hosp/d_hcpcs/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
           SerdeInfo:
-            Parameters:
-              separatorChar: ","
-            SerializationLibrary: org.apache.hadoop.hive.serde2.OpenCSVSerde
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
         TableType: EXTERNAL_TABLE
     Metadata:
-      aws:cdk:path: MimicivGlueDbStack/d_hcpcs
+      aws:cdk:path: MimicivParquetDatabaseStack/d_hcpcs
   dicddiagnoses:
     Type: AWS::Glue::Table
     Properties:
@@ -158,13 +155,8 @@ Resources:
         Description: mimic-iv d_icd_diagnoses table
         Name: d_icd_diagnoses
         Parameters:
-          skip.header.line.count: "1"
-          compressionType: gzip
-          classification: csv
-          columnsOrdered: "true"
-          areColumnsQuoted: "true"
-          delimiter: ","
-          typeOfData: file
+          classification: parquet
+          useGlueParquetWriter: "true"
         StorageDescriptor:
           Columns:
             - Name: icd_code
@@ -173,16 +165,14 @@ Resources:
               Type: bigint
             - Name: long_title
               Type: string
-          InputFormat: org.apache.hadoop.mapred.TextInputFormat
-          Location: s3://mimiciv-physionet/athena/hosp/d_icd_diagnoses/
-          OutputFormat: org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/hosp/d_icd_diagnoses/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
           SerdeInfo:
-            Parameters:
-              separatorChar: ","
-            SerializationLibrary: org.apache.hadoop.hive.serde2.OpenCSVSerde
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
         TableType: EXTERNAL_TABLE
     Metadata:
-      aws:cdk:path: MimicivGlueDbStack/d_icd_diagnoses
+      aws:cdk:path: MimicivParquetDatabaseStack/d_icd_diagnoses
   dicdprocedures:
     Type: AWS::Glue::Table
     Properties:
@@ -194,13 +184,8 @@ Resources:
         Description: mimic-iv d_icd_procedures table
         Name: d_icd_procedures
         Parameters:
-          skip.header.line.count: "1"
-          compressionType: gzip
-          classification: csv
-          columnsOrdered: "true"
-          areColumnsQuoted: "true"
-          delimiter: ","
-          typeOfData: file
+          classification: parquet
+          useGlueParquetWriter: "true"
         StorageDescriptor:
           Columns:
             - Name: icd_code
@@ -209,16 +194,45 @@ Resources:
               Type: bigint
             - Name: long_title
               Type: string
-          InputFormat: org.apache.hadoop.mapred.TextInputFormat
-          Location: s3://mimiciv-physionet/athena/hosp/d_icd_procedures/
-          OutputFormat: org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/hosp/d_icd_procedures/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
           SerdeInfo:
-            Parameters:
-              separatorChar: ","
-            SerializationLibrary: org.apache.hadoop.hive.serde2.OpenCSVSerde
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
         TableType: EXTERNAL_TABLE
     Metadata:
-      aws:cdk:path: MimicivGlueDbStack/d_icd_procedures
+      aws:cdk:path: MimicivParquetDatabaseStack/d_icd_procedures
+  dlabitems:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv d_labitems table
+        Name: d_labitems
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: itemid
+              Type: bigint
+            - Name: label
+              Type: string
+            - Name: fluid
+              Type: string
+            - Name: category
+              Type: string
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/hosp/d_labitems/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
+    Metadata:
+      aws:cdk:path: MimicivParquetDatabaseStack/d_labitems
   diagnosesicd:
     Type: AWS::Glue::Table
     Properties:
@@ -230,13 +244,8 @@ Resources:
         Description: mimic-iv diagnoses_icd table
         Name: diagnoses_icd
         Parameters:
-          skip.header.line.count: "1"
-          compressionType: gzip
-          classification: csv
-          columnsOrdered: "true"
-          areColumnsQuoted: "true"
-          delimiter: ","
-          typeOfData: file
+          classification: parquet
+          useGlueParquetWriter: "true"
         StorageDescriptor:
           Columns:
             - Name: subject_id
@@ -249,16 +258,14 @@ Resources:
               Type: string
             - Name: icd_version
               Type: bigint
-          InputFormat: org.apache.hadoop.mapred.TextInputFormat
-          Location: s3://mimiciv-physionet/athena/hosp/diagnoses_icd/
-          OutputFormat: org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/hosp/diagnoses_icd/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
           SerdeInfo:
-            Parameters:
-              field.delim: ","
-            SerializationLibrary: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
         TableType: EXTERNAL_TABLE
     Metadata:
-      aws:cdk:path: MimicivGlueDbStack/diagnoses_icd
+      aws:cdk:path: MimicivParquetDatabaseStack/diagnoses_icd
   drgcodes:
     Type: AWS::Glue::Table
     Properties:
@@ -270,13 +277,8 @@ Resources:
         Description: mimic-iv drgcodes table
         Name: drgcodes
         Parameters:
-          skip.header.line.count: "1"
-          compressionType: gzip
-          classification: csv
-          columnsOrdered: "true"
-          areColumnsQuoted: "true"
-          delimiter: ","
-          typeOfData: file
+          classification: parquet
+          useGlueParquetWriter: "true"
         StorageDescriptor:
           Columns:
             - Name: subject_id
@@ -286,23 +288,66 @@ Resources:
             - Name: drg_type
               Type: string
             - Name: drg_code
-              Type: bigint
+              Type: string
             - Name: description
               Type: string
             - Name: drg_severity
-              Type: string
+              Type: bigint
             - Name: drg_mortality
-              Type: string
-          InputFormat: org.apache.hadoop.mapred.TextInputFormat
-          Location: s3://mimiciv-physionet/athena/hosp/drgcodes/
-          OutputFormat: org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat
+              Type: bigint
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/hosp/drgcodes/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
           SerdeInfo:
-            Parameters:
-              separatorChar: ","
-            SerializationLibrary: org.apache.hadoop.hive.serde2.OpenCSVSerde
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
         TableType: EXTERNAL_TABLE
     Metadata:
-      aws:cdk:path: MimicivGlueDbStack/drgcodes
+      aws:cdk:path: MimicivParquetDatabaseStack/drgcodes
+  emar:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv emar table
+        Name: emar
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: subject_id
+              Type: bigint
+            - Name: hadm_id
+              Type: bigint
+            - Name: emar_id
+              Type: string
+            - Name: emar_seq
+              Type: bigint
+            - Name: poe_id
+              Type: string
+            - Name: pharmacy_id
+              Type: bigint
+            - Name: charttime
+              Type: timestamp
+            - Name: medication
+              Type: string
+            - Name: event_txt
+              Type: string
+            - Name: scheduletime
+              Type: timestamp
+            - Name: storetime
+              Type: timestamp
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/hosp/emar/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
+    Metadata:
+      aws:cdk:path: MimicivParquetDatabaseStack/emar
   emardetail:
     Type: AWS::Glue::Table
     Properties:
@@ -314,13 +359,8 @@ Resources:
         Description: mimic-iv emar_detail table
         Name: emar_detail
         Parameters:
-          skip.header.line.count: "1"
-          compressionType: gzip
-          classification: csv
-          columnsOrdered: "true"
-          areColumnsQuoted: "true"
-          delimiter: ","
-          typeOfData: file
+          classification: parquet
+          useGlueParquetWriter: "true"
         StorageDescriptor:
           Columns:
             - Name: subject_id
@@ -334,7 +374,7 @@ Resources:
             - Name: administration_type
               Type: string
             - Name: pharmacy_id
-              Type: string
+              Type: bigint
             - Name: barcode_type
               Type: string
             - Name: reason_for_no_barcode
@@ -389,68 +429,14 @@ Resources:
               Type: string
             - Name: non_formulary_visual_verification
               Type: string
-          InputFormat: org.apache.hadoop.mapred.TextInputFormat
-          Location: s3://mimiciv-physionet/athena/hosp/emar_detail/
-          OutputFormat: org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/hosp/emar_detail/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
           SerdeInfo:
-            Parameters:
-              separatorChar: ","
-            SerializationLibrary: org.apache.hadoop.hive.serde2.OpenCSVSerde
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
         TableType: EXTERNAL_TABLE
     Metadata:
-      aws:cdk:path: MimicivGlueDbStack/emar_detail
-  emar:
-    Type: AWS::Glue::Table
-    Properties:
-      CatalogId:
-        Ref: AWS::AccountId
-      DatabaseName:
-        Ref: MIMICIVDB
-      TableInput:
-        Description: mimic-iv emar table
-        Name: emar
-        Parameters:
-          skip.header.line.count: "1"
-          compressionType: gzip
-          classification: csv
-          columnsOrdered: "true"
-          areColumnsQuoted: "true"
-          delimiter: ","
-          typeOfData: file
-        StorageDescriptor:
-          Columns:
-            - Name: subject_id
-              Type: bigint
-            - Name: hadm_id
-              Type: string
-            - Name: emar_id
-              Type: string
-            - Name: emar_seq
-              Type: bigint
-            - Name: poe_id
-              Type: string
-            - Name: pharmacy_id
-              Type: string
-            - Name: charttime
-              Type: string
-            - Name: medication
-              Type: string
-            - Name: event_txt
-              Type: string
-            - Name: scheduletime
-              Type: string
-            - Name: storetime
-              Type: string
-          InputFormat: org.apache.hadoop.mapred.TextInputFormat
-          Location: s3://mimiciv-physionet/athena/hosp/emar/
-          OutputFormat: org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat
-          SerdeInfo:
-            Parameters:
-              separatorChar: ","
-            SerializationLibrary: org.apache.hadoop.hive.serde2.OpenCSVSerde
-        TableType: EXTERNAL_TABLE
-    Metadata:
-      aws:cdk:path: MimicivGlueDbStack/emar
+      aws:cdk:path: MimicivParquetDatabaseStack/emar_detail
   hcpcsevents:
     Type: AWS::Glue::Table
     Properties:
@@ -462,13 +448,8 @@ Resources:
         Description: mimic-iv hcpcsevents table
         Name: hcpcsevents
         Parameters:
-          skip.header.line.count: "1"
-          compressionType: gzip
-          classification: csv
-          columnsOrdered: "true"
-          areColumnsQuoted: "true"
-          delimiter: ","
-          typeOfData: file
+          classification: parquet
+          useGlueParquetWriter: "true"
         StorageDescriptor:
           Columns:
             - Name: subject_id
@@ -476,23 +457,21 @@ Resources:
             - Name: hadm_id
               Type: bigint
             - Name: chartdate
-              Type: string
+              Type: date
             - Name: hcpcs_cd
               Type: string
             - Name: seq_num
               Type: bigint
             - Name: short_description
               Type: string
-          InputFormat: org.apache.hadoop.mapred.TextInputFormat
-          Location: s3://mimiciv-physionet/athena/hosp/hcpcsevents/
-          OutputFormat: org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/hosp/hcpcsevents/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
           SerdeInfo:
-            Parameters:
-              separatorChar: ","
-            SerializationLibrary: org.apache.hadoop.hive.serde2.OpenCSVSerde
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
         TableType: EXTERNAL_TABLE
     Metadata:
-      aws:cdk:path: MimicivGlueDbStack/hcpcsevents
+      aws:cdk:path: MimicivParquetDatabaseStack/hcpcsevents
   labevents:
     Type: AWS::Glue::Table
     Properties:
@@ -504,13 +483,8 @@ Resources:
         Description: mimic-iv labevents table
         Name: labevents
         Parameters:
-          skip.header.line.count: "1"
-          compressionType: gzip
-          classification: csv
-          columnsOrdered: "true"
-          areColumnsQuoted: "true"
-          delimiter: ","
-          typeOfData: file
+          classification: parquet
+          useGlueParquetWriter: "true"
         StorageDescriptor:
           Columns:
             - Name: labevent_id
@@ -518,41 +492,39 @@ Resources:
             - Name: subject_id
               Type: bigint
             - Name: hadm_id
-              Type: string
+              Type: bigint
             - Name: specimen_id
               Type: bigint
             - Name: itemid
               Type: bigint
             - Name: charttime
-              Type: string
+              Type: timestamp
             - Name: storetime
-              Type: string
+              Type: timestamp
             - Name: value
               Type: string
             - Name: valuenum
-              Type: string
+              Type: float
             - Name: valueuom
               Type: string
             - Name: ref_range_lower
-              Type: string
+              Type: float
             - Name: ref_range_upper
-              Type: string
+              Type: float
             - Name: flag
               Type: string
             - Name: priority
               Type: string
             - Name: comments
               Type: string
-          InputFormat: org.apache.hadoop.mapred.TextInputFormat
-          Location: s3://mimiciv-physionet/athena/hosp/labevents/
-          OutputFormat: org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/hosp/labevents/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
           SerdeInfo:
-            Parameters:
-              separatorChar: ","
-            SerializationLibrary: org.apache.hadoop.hive.serde2.OpenCSVSerde
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
         TableType: EXTERNAL_TABLE
     Metadata:
-      aws:cdk:path: MimicivGlueDbStack/labevents
+      aws:cdk:path: MimicivParquetDatabaseStack/labevents
   microbiologyevents:
     Type: AWS::Glue::Table
     Properties:
@@ -564,13 +536,8 @@ Resources:
         Description: mimic-iv microbiologyevents table
         Name: microbiologyevents
         Parameters:
-          skip.header.line.count: "1"
-          compressionType: gzip
-          classification: csv
-          columnsOrdered: "true"
-          areColumnsQuoted: "true"
-          delimiter: ","
-          typeOfData: file
+          classification: parquet
+          useGlueParquetWriter: "true"
         StorageDescriptor:
           Columns:
             - Name: microevent_id
@@ -578,13 +545,13 @@ Resources:
             - Name: subject_id
               Type: bigint
             - Name: hadm_id
-              Type: string
+              Type: bigint
             - Name: micro_specimen_id
               Type: bigint
             - Name: chartdate
-              Type: string
+              Type: timestamp
             - Name: charttime
-              Type: string
+              Type: timestamp
             - Name: spec_itemid
               Type: bigint
             - Name: spec_type_desc
@@ -592,23 +559,23 @@ Resources:
             - Name: test_seq
               Type: bigint
             - Name: storedate
-              Type: string
+              Type: timestamp
             - Name: storetime
-              Type: string
+              Type: timestamp
             - Name: test_itemid
               Type: bigint
             - Name: test_name
               Type: string
             - Name: org_itemid
-              Type: string
+              Type: bigint
             - Name: org_name
               Type: string
             - Name: isolate_num
-              Type: string
+              Type: bigint
             - Name: quantity
               Type: string
             - Name: ab_itemid
-              Type: string
+              Type: bigint
             - Name: ab_name
               Type: string
             - Name: dilution_text
@@ -616,21 +583,19 @@ Resources:
             - Name: dilution_comparison
               Type: string
             - Name: dilution_value
-              Type: string
+              Type: float
             - Name: interpretation
               Type: string
             - Name: comments
               Type: string
-          InputFormat: org.apache.hadoop.mapred.TextInputFormat
-          Location: s3://mimiciv-physionet/athena/hosp/microbiologyevents/
-          OutputFormat: org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/hosp/microbiologyevents/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
           SerdeInfo:
-            Parameters:
-              separatorChar: ","
-            SerializationLibrary: org.apache.hadoop.hive.serde2.OpenCSVSerde
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
         TableType: EXTERNAL_TABLE
     Metadata:
-      aws:cdk:path: MimicivGlueDbStack/microbiologyevents
+      aws:cdk:path: MimicivParquetDatabaseStack/microbiologyevents
   omr:
     Type: AWS::Glue::Table
     Properties:
@@ -642,35 +607,28 @@ Resources:
         Description: mimic-iv omr table
         Name: omr
         Parameters:
-          skip.header.line.count: "1"
-          compressionType: gzip
-          classification: csv
-          columnsOrdered: "true"
-          areColumnsQuoted: "true"
-          delimiter: ","
-          typeOfData: file
+          classification: parquet
+          useGlueParquetWriter: "true"
         StorageDescriptor:
           Columns:
             - Name: subject_id
               Type: bigint
             - Name: chartdate
-              Type: string
+              Type: date
             - Name: seq_num
               Type: bigint
             - Name: result_name
               Type: string
             - Name: result_value
               Type: string
-          InputFormat: org.apache.hadoop.mapred.TextInputFormat
-          Location: s3://mimiciv-physionet/athena/hosp/omr/
-          OutputFormat: org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/hosp/omr/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
           SerdeInfo:
-            Parameters:
-              field.delim: ","
-            SerializationLibrary: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
         TableType: EXTERNAL_TABLE
     Metadata:
-      aws:cdk:path: MimicivGlueDbStack/omr
+      aws:cdk:path: MimicivParquetDatabaseStack/omr
   patients:
     Type: AWS::Glue::Table
     Properties:
@@ -682,13 +640,8 @@ Resources:
         Description: mimic-iv patients table
         Name: patients
         Parameters:
-          skip.header.line.count: "1"
-          compressionType: gzip
-          classification: csv
-          columnsOrdered: "true"
-          areColumnsQuoted: "true"
-          delimiter: ","
-          typeOfData: file
+          classification: parquet
+          useGlueParquetWriter: "true"
         StorageDescriptor:
           Columns:
             - Name: subject_id
@@ -702,17 +655,15 @@ Resources:
             - Name: anchor_year_group
               Type: string
             - Name: dod
-              Type: string
-          InputFormat: org.apache.hadoop.mapred.TextInputFormat
-          Location: s3://mimiciv-physionet/athena/hosp/patients/
-          OutputFormat: org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat
+              Type: date
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/hosp/patients/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
           SerdeInfo:
-            Parameters:
-              field.delim: ","
-            SerializationLibrary: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
         TableType: EXTERNAL_TABLE
     Metadata:
-      aws:cdk:path: MimicivGlueDbStack/patients
+      aws:cdk:path: MimicivParquetDatabaseStack/patients
   pharmacy:
     Type: AWS::Glue::Table
     Properties:
@@ -724,13 +675,8 @@ Resources:
         Description: mimic-iv pharmacy table
         Name: pharmacy
         Parameters:
-          skip.header.line.count: "1"
-          compressionType: gzip
-          classification: csv
-          columnsOrdered: "true"
-          areColumnsQuoted: "true"
-          delimiter: ","
-          typeOfData: file
+          classification: parquet
+          useGlueParquetWriter: "true"
         StorageDescriptor:
           Columns:
             - Name: subject_id
@@ -742,9 +688,9 @@ Resources:
             - Name: poe_id
               Type: string
             - Name: starttime
-              Type: string
+              Type: timestamp
             - Name: stoptime
-              Type: string
+              Type: timestamp
             - Name: medication
               Type: string
             - Name: proc_type
@@ -752,9 +698,9 @@ Resources:
             - Name: status
               Type: string
             - Name: entertime
-              Type: string
+              Type: timestamp
             - Name: verifiedtime
-              Type: string
+              Type: timestamp
             - Name: route
               Type: string
             - Name: frequency
@@ -768,71 +714,33 @@ Resources:
             - Name: lockout_interval
               Type: string
             - Name: basal_rate
-              Type: string
+              Type: float
             - Name: one_hr_max
               Type: string
             - Name: doses_per_24_hrs
-              Type: string
+              Type: float
             - Name: duration
-              Type: string
+              Type: float
             - Name: duration_interval
               Type: string
-            - Name: expirationdate
+            - Name: expiration_value
+              Type: bigint
+            - Name: expiration_unit
               Type: string
+            - Name: expirationdate
+              Type: timestamp
             - Name: dispensation
               Type: string
             - Name: fill_quantity
               Type: string
-          InputFormat: org.apache.hadoop.mapred.TextInputFormat
-          Location: s3://mimiciv-physionet/athena/hosp/pharmacy/
-          OutputFormat: org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/hosp/pharmacy/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
           SerdeInfo:
-            Parameters:
-              separatorChar: ","
-            SerializationLibrary: org.apache.hadoop.hive.serde2.OpenCSVSerde
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
         TableType: EXTERNAL_TABLE
     Metadata:
-      aws:cdk:path: MimicivGlueDbStack/pharmacy
-  poedetail:
-    Type: AWS::Glue::Table
-    Properties:
-      CatalogId:
-        Ref: AWS::AccountId
-      DatabaseName:
-        Ref: MIMICIVDB
-      TableInput:
-        Description: mimic-iv poe_detail table
-        Name: poe_detail
-        Parameters:
-          skip.header.line.count: "1"
-          compressionType: gzip
-          classification: csv
-          columnsOrdered: "true"
-          areColumnsQuoted: "true"
-          delimiter: ","
-          typeOfData: file
-        StorageDescriptor:
-          Columns:
-            - Name: poe_id
-              Type: string
-            - Name: poe_seq
-              Type: bigint
-            - Name: subject_id
-              Type: bigint
-            - Name: field_name
-              Type: string
-            - Name: field_value
-              Type: string
-          InputFormat: org.apache.hadoop.mapred.TextInputFormat
-          Location: s3://mimiciv-physionet/athena/hosp/poe_detail/
-          OutputFormat: org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat
-          SerdeInfo:
-            Parameters:
-              separatorChar: ","
-            SerializationLibrary: org.apache.hadoop.hive.serde2.OpenCSVSerde
-        TableType: EXTERNAL_TABLE
-    Metadata:
-      aws:cdk:path: MimicivGlueDbStack/poe_detail
+      aws:cdk:path: MimicivParquetDatabaseStack/pharmacy
   poe:
     Type: AWS::Glue::Table
     Properties:
@@ -844,13 +752,8 @@ Resources:
         Description: mimic-iv poe table
         Name: poe
         Parameters:
-          skip.header.line.count: "1"
-          compressionType: gzip
-          classification: csv
-          columnsOrdered: "true"
-          areColumnsQuoted: "true"
-          delimiter: ","
-          typeOfData: file
+          classification: parquet
+          useGlueParquetWriter: "true"
         StorageDescriptor:
           Columns:
             - Name: poe_id
@@ -862,7 +765,7 @@ Resources:
             - Name: hadm_id
               Type: bigint
             - Name: ordertime
-              Type: string
+              Type: timestamp
             - Name: order_type
               Type: string
             - Name: order_subtype
@@ -875,16 +778,47 @@ Resources:
               Type: string
             - Name: order_status
               Type: string
-          InputFormat: org.apache.hadoop.mapred.TextInputFormat
-          Location: s3://mimiciv-physionet/athena/hosp/poe/
-          OutputFormat: org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/hosp/poe/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
           SerdeInfo:
-            Parameters:
-              field.delim: ","
-            SerializationLibrary: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
         TableType: EXTERNAL_TABLE
     Metadata:
-      aws:cdk:path: MimicivGlueDbStack/poe
+      aws:cdk:path: MimicivParquetDatabaseStack/poe
+  poedetail:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv poe_detail table
+        Name: poe_detail
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: poe_id
+              Type: string
+            - Name: poe_seq
+              Type: bigint
+            - Name: subject_id
+              Type: bigint
+            - Name: field_name
+              Type: string
+            - Name: field_value
+              Type: string
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/hosp/poe_detail/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
+    Metadata:
+      aws:cdk:path: MimicivParquetDatabaseStack/poe_detail
   prescriptions:
     Type: AWS::Glue::Table
     Properties:
@@ -896,13 +830,8 @@ Resources:
         Description: mimic-iv prescriptions table
         Name: prescriptions
         Parameters:
-          skip.header.line.count: "1"
-          compressionType: gzip
-          classification: csv
-          columnsOrdered: "true"
-          areColumnsQuoted: "true"
-          delimiter: ","
-          typeOfData: file
+          classification: parquet
+          useGlueParquetWriter: "true"
         StorageDescriptor:
           Columns:
             - Name: subject_id
@@ -914,11 +843,11 @@ Resources:
             - Name: poe_id
               Type: string
             - Name: poe_seq
-              Type: string
+              Type: bigint
             - Name: starttime
-              Type: string
+              Type: timestamp
             - Name: stoptime
-              Type: string
+              Type: timestamp
             - Name: drug_type
               Type: string
             - Name: drug
@@ -942,19 +871,17 @@ Resources:
             - Name: form_unit_disp
               Type: string
             - Name: doses_per_24_hrs
-              Type: string
+              Type: float
             - Name: route
               Type: string
-          InputFormat: org.apache.hadoop.mapred.TextInputFormat
-          Location: s3://mimiciv-physionet/athena/hosp/prescriptions/
-          OutputFormat: org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/hosp/prescriptions/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
           SerdeInfo:
-            Parameters:
-              separatorChar: ","
-            SerializationLibrary: org.apache.hadoop.hive.serde2.OpenCSVSerde
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
         TableType: EXTERNAL_TABLE
     Metadata:
-      aws:cdk:path: MimicivGlueDbStack/prescriptions
+      aws:cdk:path: MimicivParquetDatabaseStack/prescriptions
   proceduresicd:
     Type: AWS::Glue::Table
     Properties:
@@ -966,13 +893,8 @@ Resources:
         Description: mimic-iv procedures_icd table
         Name: procedures_icd
         Parameters:
-          skip.header.line.count: "1"
-          compressionType: gzip
-          classification: csv
-          columnsOrdered: "true"
-          areColumnsQuoted: "true"
-          delimiter: ","
-          typeOfData: file
+          classification: parquet
+          useGlueParquetWriter: "true"
         StorageDescriptor:
           Columns:
             - Name: subject_id
@@ -982,21 +904,19 @@ Resources:
             - Name: seq_num
               Type: bigint
             - Name: chartdate
-              Type: string
+              Type: date
             - Name: icd_code
               Type: string
             - Name: icd_version
               Type: bigint
-          InputFormat: org.apache.hadoop.mapred.TextInputFormat
-          Location: s3://mimiciv-physionet/athena/hosp/procedures_icd/
-          OutputFormat: org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/hosp/procedures_icd/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
           SerdeInfo:
-            Parameters:
-              field.delim: ","
-            SerializationLibrary: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
         TableType: EXTERNAL_TABLE
     Metadata:
-      aws:cdk:path: MimicivGlueDbStack/procedures_icd
+      aws:cdk:path: MimicivParquetDatabaseStack/procedures_icd
   services:
     Type: AWS::Glue::Table
     Properties:
@@ -1008,13 +928,8 @@ Resources:
         Description: mimic-iv services table
         Name: services
         Parameters:
-          skip.header.line.count: "1"
-          compressionType: gzip
-          classification: csv
-          columnsOrdered: "true"
-          areColumnsQuoted: "true"
-          delimiter: ","
-          typeOfData: file
+          classification: parquet
+          useGlueParquetWriter: "true"
         StorageDescriptor:
           Columns:
             - Name: subject_id
@@ -1022,21 +937,19 @@ Resources:
             - Name: hadm_id
               Type: bigint
             - Name: transfertime
-              Type: string
+              Type: timestamp
             - Name: prev_service
               Type: string
             - Name: curr_service
               Type: string
-          InputFormat: org.apache.hadoop.mapred.TextInputFormat
-          Location: s3://mimiciv-physionet/athena/hosp/services/
-          OutputFormat: org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/hosp/services/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
           SerdeInfo:
-            Parameters:
-              field.delim: ","
-            SerializationLibrary: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
         TableType: EXTERNAL_TABLE
     Metadata:
-      aws:cdk:path: MimicivGlueDbStack/services
+      aws:cdk:path: MimicivParquetDatabaseStack/services
   transfers:
     Type: AWS::Glue::Table
     Properties:
@@ -1048,13 +961,8 @@ Resources:
         Description: mimic-iv transfers table
         Name: transfers
         Parameters:
-          skip.header.line.count: "1"
-          compressionType: gzip
-          classification: csv
-          columnsOrdered: "true"
-          areColumnsQuoted: "true"
-          delimiter: ","
-          typeOfData: file
+          classification: parquet
+          useGlueParquetWriter: "true"
         StorageDescriptor:
           Columns:
             - Name: subject_id
@@ -1068,19 +976,17 @@ Resources:
             - Name: careunit
               Type: string
             - Name: intime
-              Type: string
+              Type: timestamp
             - Name: outtime
-              Type: string
-          InputFormat: org.apache.hadoop.mapred.TextInputFormat
-          Location: s3://mimiciv-physionet/athena/hosp/transfers/
-          OutputFormat: org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat
+              Type: timestamp
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/hosp/transfers/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
           SerdeInfo:
-            Parameters:
-              field.delim: ","
-            SerializationLibrary: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
         TableType: EXTERNAL_TABLE
     Metadata:
-      aws:cdk:path: MimicivGlueDbStack/transfers
+      aws:cdk:path: MimicivParquetDatabaseStack/transfers
   chartevents:
     Type: AWS::Glue::Table
     Properties:
@@ -1092,13 +998,8 @@ Resources:
         Description: mimic-iv chartevents table
         Name: chartevents
         Parameters:
-          skip.header.line.count: "1"
-          compressionType: gzip
-          classification: csv
-          columnsOrdered: "true"
-          areColumnsQuoted: "true"
-          delimiter: ","
-          typeOfData: file
+          classification: parquet
+          useGlueParquetWriter: "true"
         StorageDescriptor:
           Columns:
             - Name: subject_id
@@ -1108,29 +1009,27 @@ Resources:
             - Name: stay_id
               Type: bigint
             - Name: charttime
-              Type: string
+              Type: timestamp
             - Name: storetime
-              Type: string
+              Type: timestamp
             - Name: itemid
               Type: bigint
             - Name: value
               Type: string
             - Name: valuenum
-              Type: string
+              Type: float
             - Name: valueuom
               Type: string
             - Name: warning
-              Type: string
-          InputFormat: org.apache.hadoop.mapred.TextInputFormat
-          Location: s3://mimiciv-physionet/athena/icu/chartevents/
-          OutputFormat: org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat
+              Type: bigint
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/icu/chartevents/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
           SerdeInfo:
-            Parameters:
-              separatorChar: ","
-            SerializationLibrary: org.apache.hadoop.hive.serde2.OpenCSVSerde
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
         TableType: EXTERNAL_TABLE
     Metadata:
-      aws:cdk:path: MimicivGlueDbStack/chartevents
+      aws:cdk:path: MimicivParquetDatabaseStack/chartevents
   ditems:
     Type: AWS::Glue::Table
     Properties:
@@ -1142,13 +1041,8 @@ Resources:
         Description: mimic-iv d_items table
         Name: d_items
         Parameters:
-          skip.header.line.count: "1"
-          compressionType: gzip
-          classification: csv
-          columnsOrdered: "true"
-          areColumnsQuoted: "true"
-          delimiter: ","
-          typeOfData: file
+          classification: parquet
+          useGlueParquetWriter: "true"
         StorageDescriptor:
           Columns:
             - Name: itemid
@@ -1166,19 +1060,17 @@ Resources:
             - Name: param_type
               Type: string
             - Name: lownormalvalue
-              Type: string
+              Type: float
             - Name: highnormalvalue
-              Type: string
-          InputFormat: org.apache.hadoop.mapred.TextInputFormat
-          Location: s3://mimiciv-physionet/athena/icu/d_items/
-          OutputFormat: org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat
+              Type: float
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/icu/d_items/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
           SerdeInfo:
-            Parameters:
-              separatorChar: ","
-            SerializationLibrary: org.apache.hadoop.hive.serde2.OpenCSVSerde
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
         TableType: EXTERNAL_TABLE
     Metadata:
-      aws:cdk:path: MimicivGlueDbStack/d_items
+      aws:cdk:path: MimicivParquetDatabaseStack/d_items
   datetimeevents:
     Type: AWS::Glue::Table
     Properties:
@@ -1190,13 +1082,8 @@ Resources:
         Description: mimic-iv datetimeevents table
         Name: datetimeevents
         Parameters:
-          skip.header.line.count: "1"
-          compressionType: gzip
-          classification: csv
-          columnsOrdered: "true"
-          areColumnsQuoted: "true"
-          delimiter: ","
-          typeOfData: file
+          classification: parquet
+          useGlueParquetWriter: "true"
         StorageDescriptor:
           Columns:
             - Name: subject_id
@@ -1206,27 +1093,25 @@ Resources:
             - Name: stay_id
               Type: bigint
             - Name: charttime
-              Type: string
+              Type: timestamp
             - Name: storetime
-              Type: string
+              Type: timestamp
             - Name: itemid
               Type: bigint
             - Name: value
-              Type: string
+              Type: timestamp
             - Name: valueuom
               Type: string
             - Name: warning
               Type: bigint
-          InputFormat: org.apache.hadoop.mapred.TextInputFormat
-          Location: s3://mimiciv-physionet/athena/icu/datetimeevents/
-          OutputFormat: org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/icu/datetimeevents/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
           SerdeInfo:
-            Parameters:
-              field.delim: ","
-            SerializationLibrary: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
         TableType: EXTERNAL_TABLE
     Metadata:
-      aws:cdk:path: MimicivGlueDbStack/datetimeevents
+      aws:cdk:path: MimicivParquetDatabaseStack/datetimeevents
   icustays:
     Type: AWS::Glue::Table
     Properties:
@@ -1238,13 +1123,8 @@ Resources:
         Description: mimic-iv icustays table
         Name: icustays
         Parameters:
-          skip.header.line.count: "1"
-          compressionType: gzip
-          classification: csv
-          columnsOrdered: "true"
-          areColumnsQuoted: "true"
-          delimiter: ","
-          typeOfData: file
+          classification: parquet
+          useGlueParquetWriter: "true"
         StorageDescriptor:
           Columns:
             - Name: subject_id
@@ -1258,21 +1138,19 @@ Resources:
             - Name: last_careunit
               Type: string
             - Name: intime
-              Type: string
+              Type: timestamp
             - Name: outtime
-              Type: string
+              Type: timestamp
             - Name: los
-              Type: double
-          InputFormat: org.apache.hadoop.mapred.TextInputFormat
-          Location: s3://mimiciv-physionet/athena/icu/icustays/
-          OutputFormat: org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat
+              Type: float
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/icu/icustays/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
           SerdeInfo:
-            Parameters:
-              field.delim: ","
-            SerializationLibrary: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
         TableType: EXTERNAL_TABLE
     Metadata:
-      aws:cdk:path: MimicivGlueDbStack/icustays
+      aws:cdk:path: MimicivParquetDatabaseStack/icustays
   ingredientevents:
     Type: AWS::Glue::Table
     Properties:
@@ -1284,13 +1162,8 @@ Resources:
         Description: mimic-iv ingredientevents table
         Name: ingredientevents
         Parameters:
-          skip.header.line.count: "1"
-          compressionType: gzip
-          classification: csv
-          columnsOrdered: "true"
-          areColumnsQuoted: "true"
-          delimiter: ","
-          typeOfData: file
+          classification: parquet
+          useGlueParquetWriter: "true"
         StorageDescriptor:
           Columns:
             - Name: subject_id
@@ -1300,19 +1173,19 @@ Resources:
             - Name: stay_id
               Type: bigint
             - Name: starttime
-              Type: string
+              Type: timestamp
             - Name: endtime
-              Type: string
+              Type: timestamp
             - Name: storetime
-              Type: string
+              Type: timestamp
             - Name: itemid
               Type: bigint
             - Name: amount
-              Type: double
+              Type: float
             - Name: amountuom
               Type: string
             - Name: rate
-              Type: string
+              Type: float
             - Name: rateuom
               Type: string
             - Name: orderid
@@ -1322,19 +1195,17 @@ Resources:
             - Name: statusdescription
               Type: string
             - Name: originalamount
-              Type: bigint
+              Type: float
             - Name: originalrate
-              Type: double
-          InputFormat: org.apache.hadoop.mapred.TextInputFormat
-          Location: s3://mimiciv-physionet/athena/icu/ingredientevents/
-          OutputFormat: org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat
+              Type: float
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/icu/ingredientevents/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
           SerdeInfo:
-            Parameters:
-              field.delim: ","
-            SerializationLibrary: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
         TableType: EXTERNAL_TABLE
     Metadata:
-      aws:cdk:path: MimicivGlueDbStack/ingredientevents
+      aws:cdk:path: MimicivParquetDatabaseStack/ingredientevents
   inputevents:
     Type: AWS::Glue::Table
     Properties:
@@ -1346,13 +1217,8 @@ Resources:
         Description: mimic-iv inputevents table
         Name: inputevents
         Parameters:
-          skip.header.line.count: "1"
-          compressionType: gzip
-          classification: csv
-          columnsOrdered: "true"
-          areColumnsQuoted: "true"
-          delimiter: ","
-          typeOfData: file
+          classification: parquet
+          useGlueParquetWriter: "true"
         StorageDescriptor:
           Columns:
             - Name: subject_id
@@ -1362,19 +1228,19 @@ Resources:
             - Name: stay_id
               Type: bigint
             - Name: starttime
-              Type: string
+              Type: timestamp
             - Name: endtime
-              Type: string
+              Type: timestamp
             - Name: storetime
-              Type: string
+              Type: timestamp
             - Name: itemid
               Type: bigint
             - Name: amount
-              Type: double
+              Type: float
             - Name: amountuom
               Type: string
             - Name: rate
-              Type: string
+              Type: float
             - Name: rateuom
               Type: string
             - Name: orderid
@@ -1390,9 +1256,9 @@ Resources:
             - Name: ordercategorydescription
               Type: string
             - Name: patientweight
-              Type: double
+              Type: float
             - Name: totalamount
-              Type: string
+              Type: float
             - Name: totalamountuom
               Type: string
             - Name: isopenbag
@@ -1402,19 +1268,17 @@ Resources:
             - Name: statusdescription
               Type: string
             - Name: originalamount
-              Type: double
+              Type: float
             - Name: originalrate
-              Type: double
-          InputFormat: org.apache.hadoop.mapred.TextInputFormat
-          Location: s3://mimiciv-physionet/athena/icu/inputevents/
-          OutputFormat: org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat
+              Type: float
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/icu/inputevents/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
           SerdeInfo:
-            Parameters:
-              field.delim: ","
-            SerializationLibrary: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
         TableType: EXTERNAL_TABLE
     Metadata:
-      aws:cdk:path: MimicivGlueDbStack/inputevents
+      aws:cdk:path: MimicivParquetDatabaseStack/inputevents
   outputevents:
     Type: AWS::Glue::Table
     Properties:
@@ -1426,13 +1290,8 @@ Resources:
         Description: mimic-iv outputevents table
         Name: outputevents
         Parameters:
-          skip.header.line.count: "1"
-          compressionType: gzip
-          classification: csv
-          columnsOrdered: "true"
-          areColumnsQuoted: "true"
-          delimiter: ","
-          typeOfData: file
+          classification: parquet
+          useGlueParquetWriter: "true"
         StorageDescriptor:
           Columns:
             - Name: subject_id
@@ -1442,25 +1301,23 @@ Resources:
             - Name: stay_id
               Type: bigint
             - Name: charttime
-              Type: string
+              Type: timestamp
             - Name: storetime
-              Type: string
+              Type: timestamp
             - Name: itemid
               Type: bigint
             - Name: value
-              Type: bigint
+              Type: float
             - Name: valueuom
               Type: string
-          InputFormat: org.apache.hadoop.mapred.TextInputFormat
-          Location: s3://mimiciv-physionet/athena/icu/outputevents/
-          OutputFormat: org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/icu/outputevents/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
           SerdeInfo:
-            Parameters:
-              field.delim: ","
-            SerializationLibrary: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
         TableType: EXTERNAL_TABLE
     Metadata:
-      aws:cdk:path: MimicivGlueDbStack/outputevents
+      aws:cdk:path: MimicivParquetDatabaseStack/outputevents
   procedureevents:
     Type: AWS::Glue::Table
     Properties:
@@ -1472,13 +1329,8 @@ Resources:
         Description: mimic-iv procedureevents table
         Name: procedureevents
         Parameters:
-          skip.header.line.count: "1"
-          compressionType: gzip
-          classification: csv
-          columnsOrdered: "true"
-          areColumnsQuoted: "true"
-          delimiter: ","
-          typeOfData: file
+          classification: parquet
+          useGlueParquetWriter: "true"
         StorageDescriptor:
           Columns:
             - Name: subject_id
@@ -1488,15 +1340,15 @@ Resources:
             - Name: stay_id
               Type: bigint
             - Name: starttime
-              Type: string
+              Type: timestamp
             - Name: endtime
-              Type: string
+              Type: timestamp
             - Name: storetime
-              Type: string
+              Type: timestamp
             - Name: itemid
               Type: bigint
             - Name: value
-              Type: double
+              Type: float
             - Name: valueuom
               Type: string
             - Name: location
@@ -1512,7 +1364,7 @@ Resources:
             - Name: ordercategorydescription
               Type: string
             - Name: patientweight
-              Type: double
+              Type: float
             - Name: isopenbag
               Type: bigint
             - Name: continueinnextdept
@@ -1520,82 +1372,40 @@ Resources:
             - Name: statusdescription
               Type: string
             - Name: originalamount
-              Type: double
+              Type: float
             - Name: originalrate
-              Type: bigint
-          InputFormat: org.apache.hadoop.mapred.TextInputFormat
-          Location: s3://mimiciv-physionet/athena/icu/procedureevents/
-          OutputFormat: org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat
-          SerdeInfo:
-            Parameters:
-              separatorChar: ","
-            SerializationLibrary: org.apache.hadoop.hive.serde2.OpenCSVSerde
-        TableType: EXTERNAL_TABLE
-    Metadata:
-      aws:cdk:path: MimicivGlueDbStack/procedureevents
-  admissionsparquet:
-    Type: AWS::Glue::Table
-    Properties:
-      CatalogId:
-        Ref: AWS::AccountId
-      DatabaseName:
-        Ref: MIMICIVDB
-      TableInput:
-        Description: mimic-iv procedureevents table
-        Name: admissions-parquet
-        Parameters:
-          skip.header.line.count: "1"
-          compressionType: gzip
-          classification: csv
-          columnsOrdered: "true"
-          areColumnsQuoted: "true"
-          delimiter: ","
-          typeOfData: file
-        StorageDescriptor:
-          Columns:
-            - Name: subject_id
-              Type: int
-            - Name: hadm_id
-              Type: int
-            - Name: admittime
-              Type: timestamp
-            - Name: dischtime
-              Type: timestamp
-            - Name: deathtime
-              Type: timestamp
-            - Name: admission_type
-              Type: string
-            - Name: admission_location
-              Type: string
-            - Name: discharge_location
-              Type: string
-            - Name: insurance
-              Type: string
-            - Name: language
-              Type: string
-            - Name: marital_status
-              Type: string
-            - Name: race
-              Type: string
-            - Name: edregtime
-              Type: timestamp
-            - Name: edouttime
-              Type: timestamp
-            - Name: hospital_expire_flag
-              Type: int
+              Type: float
           InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
-          Location: s3://mimiciv-808085695168/parquet/hosp/admissions/
+          Location: s3://mimiciv-physionet/parquet/icu/procedureevents/
           OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
           SerdeInfo:
             SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
         TableType: EXTERNAL_TABLE
     Metadata:
-      aws:cdk:path: MimicivGlueDbStack/admissions-parquet
-
+      aws:cdk:path: MimicivParquetDatabaseStack/procedureevents
 
 Outputs:
-
   MIMICJupyterNotebook:
-    Value: !Join ['', ['https://', !Ref 'AWS::Region', '.console.aws.amazon.com/sagemaker/home?region=', !Ref 'AWS::Region', '#/notebook-instances/openNotebook/MIMIC-Notebook?view=classic']]
+    Description: Jupyter notebook
+    Value:
+      Fn::Join:
+        - ""
+        - - https://
+          - Ref: AWS::Region
+          - .console.aws.amazon.com/sagemaker/home?region=
+          - Ref: AWS::Region
+          - "#/notebook-instances/openNotebook/"
+          - Fn::GetAtt:
+              - MIMICNotebookInstance
+              - NotebookInstanceName
+          - ?view=classic
   MIMICAthenaforSQL:
-    Value: !Join ['', ['https://', !Ref 'AWS::Region', '.console.aws.amazon.com/athena/home?force&amp;region=', !Ref 'AWS::Region', '#query']]
+    Description: Athena web query editor
+    Value:
+      Fn::Join:
+        - ""
+        - - https://
+          - Ref: AWS::Region
+          - .console.aws.amazon.com/athena/home?force&region=
+          - Ref: AWS::Region
+          - "#/query-editor"
