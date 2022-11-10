@@ -4,7 +4,10 @@ The MIMIC-IV database is available on Amazon Web Services (AWS). To access the d
 
 ### Launch MIMIC-IV in AWS
 
-MIMIC-IV (version 2.0) is available on AWS. Use the below Launch Stack button to deploy access to the MIMIC-IV dataset into your AWS account.  This will give you real-time access to the MIMIC-IV data in your AWS account without having to download a copy of the MIMIC-IV dataset.  It will also deploy a Jupyter Notebook with access to the content of this GitHub repository in your AWS account.    Prior to launching this, please login to the [MIMIC PhysioNet website](https://mimic.mit.edu/) and [input your AWS account number](https://physionet.org/settings/cloud/).
+MIMIC-IV (version 2.0) is available on AWS. Use the below Launch Stack button to deploy access to the MIMIC-IV dataset into your AWS account.  This will give you real-time access to the MIMIC-IV data in your AWS account without having to download a copy of the MIMIC-IV dataset.  
+<!-- It will also deploy a Jupyter Notebook with access to the content of this GitHub repository in your AWS account.     -->
+
+Prior to launching this, please login to the [MIMIC PhysioNet website](https://mimic.mit.edu/) and [input your AWS account number](https://physionet.org/settings/cloud/).
 
 To start this deployment, click the Launch Stack button.  
 
