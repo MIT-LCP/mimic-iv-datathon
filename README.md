@@ -1,6 +1,8 @@
 ## Cloud access to datasets
 
-The MIMIC-IV database is available on Amazon Web Services (AWS). To access the data on the cloud, simply add the relevant cloud identifier to your PhysioNet profile.
+The MIMIC-IV database is available on Amazon Web Services (AWS). To access the data on the cloud, simply add the relevant cloud identifier to your PhysioNet profile as follows (https://physionet.org/settings/cloud/):
+
+![](Editing_AWS_ID_Physionet.png)
 
 ### Launch MIMIC-IV in AWS
 
