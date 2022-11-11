@@ -1426,6 +1426,7 @@ Resources:
               - ""
               - - s3://
                 - Ref: MimicivAthenaResultBucketF10DB83A
+    DeletionPolicy: Retain
     Metadata:
       aws:cdk:path: MimicivParquetDatabaseStack/MimicivAthenaWorkgroup
 Outputs:
