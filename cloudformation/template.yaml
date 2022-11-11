@@ -1428,12 +1428,6 @@ Resources:
                 - Ref: MimicivAthenaResultBucketF10DB83A
     Metadata:
       aws:cdk:path: MimicivParquetDatabaseStack/MimicivAthenaWorkgroup
-  CDKMetadata:
-    Type: AWS::CDK::Metadata
-    Properties:
-      Analytics: v2:deflate64:H4sIAAAAAAAA/yWMsQ7CMAxEv4U9NQXEwApIiAVQQWJEbjA0pI1R4gihqP9OU6az793dHJYllBP8hELfbdGaGtJZUFu1ebgTeuxIyOdnw+5uxLBTQ/iWDHaQKm4ps6y9CvikDi15GKwDC9XMdu+CoNOknm0kSAPZomCNYSxesB6bC0jrqC1JNv9Xr1AacpjHruztznN895kfo7zjmKwocPR6WDh9pWE3XcAKZuXkFYwpfHRiOoLqrz8yHjVq6gAAAA==
-    Metadata:
-      aws:cdk:path: MimicivParquetDatabaseStack/CDKMetadata/Default
 Outputs:
   MIMICJupyterNotebook:
     Description: Jupyter notebook
