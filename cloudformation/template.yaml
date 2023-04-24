@@ -50,8 +50,6 @@ Resources:
             - - "arn:"
               - Ref: AWS::Partition
               - :iam::aws:policy/AmazonS3FullAccess
-    Metadata:
-      aws:cdk:path: MimicivParquetDatabaseStack/NotebookInstanceRole/Resource
     Condition: CreateNotebookCondition
   MIMICNotebookInstance:
     Type: AWS::SageMaker::NotebookInstance
@@ -62,8 +60,6 @@ Resources:
           - NotebookInstanceRoleE8123527
           - Arn
       DefaultCodeRepository: https://github.com/MIT-LCP/mimic-iv-datathon
-    Metadata:
-      aws:cdk:path: MimicivParquetDatabaseStack/MIMICNotebookInstance
     Condition: CreateNotebookCondition
   MIMICIVDB:
     Type: AWS::Glue::Database
@@ -73,8 +69,6 @@ Resources:
       DatabaseInput:
         Description: MIMIC-IV Database
         Name: mimiciv
-    Metadata:
-      aws:cdk:path: MimicivParquetDatabaseStack/MIMICIVDB
   admissions:
     Type: AWS::Glue::Table
     Properties:
@@ -91,9 +85,9 @@ Resources:
         StorageDescriptor:
           Columns:
             - Name: subject_id
-              Type: bigint
+              Type: int
             - Name: hadm_id
-              Type: bigint
+              Type: int
             - Name: admittime
               Type: timestamp
             - Name: dischtime
@@ -101,6 +95,8 @@ Resources:
             - Name: deathtime
               Type: timestamp
             - Name: admission_type
+              Type: string
+            - Name: admit_provider_id
               Type: string
             - Name: admission_location
               Type: string
@@ -119,15 +115,13 @@ Resources:
             - Name: edouttime
               Type: timestamp
             - Name: hospital_expire_flag
-              Type: bigint
+              Type: smallint
           InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
           Location: s3://mimiciv-physionet/parquet/hosp/admissions/
           OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
           SerdeInfo:
             SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
         TableType: EXTERNAL_TABLE
-    Metadata:
-      aws:cdk:path: MimicivParquetDatabaseStack/admissions
   dhcpcs:
     Type: AWS::Glue::Table
     Properties:
@@ -157,8 +151,6 @@ Resources:
           SerdeInfo:
             SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
         TableType: EXTERNAL_TABLE
-    Metadata:
-      aws:cdk:path: MimicivParquetDatabaseStack/d_hcpcs
   dicddiagnoses:
     Type: AWS::Glue::Table
     Properties:
@@ -177,7 +169,7 @@ Resources:
             - Name: icd_code
               Type: string
             - Name: icd_version
-              Type: bigint
+              Type: smallint
             - Name: long_title
               Type: string
           InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
@@ -186,8 +178,6 @@ Resources:
           SerdeInfo:
             SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
         TableType: EXTERNAL_TABLE
-    Metadata:
-      aws:cdk:path: MimicivParquetDatabaseStack/d_icd_diagnoses
   dicdprocedures:
     Type: AWS::Glue::Table
     Properties:
@@ -206,7 +196,7 @@ Resources:
             - Name: icd_code
               Type: string
             - Name: icd_version
-              Type: bigint
+              Type: smallint
             - Name: long_title
               Type: string
           InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
@@ -215,8 +205,6 @@ Resources:
           SerdeInfo:
             SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
         TableType: EXTERNAL_TABLE
-    Metadata:
-      aws:cdk:path: MimicivParquetDatabaseStack/d_icd_procedures
   dlabitems:
     Type: AWS::Glue::Table
     Properties:
@@ -233,7 +221,7 @@ Resources:
         StorageDescriptor:
           Columns:
             - Name: itemid
-              Type: bigint
+              Type: int
             - Name: label
               Type: string
             - Name: fluid
@@ -246,8 +234,6 @@ Resources:
           SerdeInfo:
             SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
         TableType: EXTERNAL_TABLE
-    Metadata:
-      aws:cdk:path: MimicivParquetDatabaseStack/d_labitems
   diagnosesicd:
     Type: AWS::Glue::Table
     Properties:
@@ -264,23 +250,21 @@ Resources:
         StorageDescriptor:
           Columns:
             - Name: subject_id
-              Type: bigint
+              Type: int
             - Name: hadm_id
-              Type: bigint
+              Type: int
             - Name: seq_num
               Type: bigint
             - Name: icd_code
               Type: string
             - Name: icd_version
-              Type: bigint
+              Type: smallint
           InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
           Location: s3://mimiciv-physionet/parquet/hosp/diagnoses_icd/
           OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
           SerdeInfo:
             SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
         TableType: EXTERNAL_TABLE
-    Metadata:
-      aws:cdk:path: MimicivParquetDatabaseStack/diagnoses_icd
   drgcodes:
     Type: AWS::Glue::Table
     Properties:
@@ -297,9 +281,9 @@ Resources:
         StorageDescriptor:
           Columns:
             - Name: subject_id
-              Type: bigint
+              Type: int
             - Name: hadm_id
-              Type: bigint
+              Type: int
             - Name: drg_type
               Type: string
             - Name: drg_code
@@ -307,17 +291,15 @@ Resources:
             - Name: description
               Type: string
             - Name: drg_severity
-              Type: bigint
+              Type: smallint
             - Name: drg_mortality
-              Type: bigint
+              Type: smallint
           InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
           Location: s3://mimiciv-physionet/parquet/hosp/drgcodes/
           OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
           SerdeInfo:
             SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
         TableType: EXTERNAL_TABLE
-    Metadata:
-      aws:cdk:path: MimicivParquetDatabaseStack/drgcodes
   emar:
     Type: AWS::Glue::Table
     Properties:
@@ -334,9 +316,9 @@ Resources:
         StorageDescriptor:
           Columns:
             - Name: subject_id
-              Type: bigint
+              Type: int
             - Name: hadm_id
-              Type: bigint
+              Type: int
             - Name: emar_id
               Type: string
             - Name: emar_seq
@@ -344,7 +326,9 @@ Resources:
             - Name: poe_id
               Type: string
             - Name: pharmacy_id
-              Type: bigint
+              Type: int
+            - Name: enter_provider_id
+              Type: string
             - Name: charttime
               Type: timestamp
             - Name: medication
@@ -361,8 +345,6 @@ Resources:
           SerdeInfo:
             SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
         TableType: EXTERNAL_TABLE
-    Metadata:
-      aws:cdk:path: MimicivParquetDatabaseStack/emar
   emardetail:
     Type: AWS::Glue::Table
     Properties:
@@ -379,7 +361,7 @@ Resources:
         StorageDescriptor:
           Columns:
             - Name: subject_id
-              Type: bigint
+              Type: int
             - Name: emar_id
               Type: string
             - Name: emar_seq
@@ -389,7 +371,7 @@ Resources:
             - Name: administration_type
               Type: string
             - Name: pharmacy_id
-              Type: bigint
+              Type: int
             - Name: barcode_type
               Type: string
             - Name: reason_for_no_barcode
@@ -450,8 +432,6 @@ Resources:
           SerdeInfo:
             SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
         TableType: EXTERNAL_TABLE
-    Metadata:
-      aws:cdk:path: MimicivParquetDatabaseStack/emar_detail
   hcpcsevents:
     Type: AWS::Glue::Table
     Properties:
@@ -468,9 +448,9 @@ Resources:
         StorageDescriptor:
           Columns:
             - Name: subject_id
-              Type: bigint
+              Type: int
             - Name: hadm_id
-              Type: bigint
+              Type: int
             - Name: chartdate
               Type: date
             - Name: hcpcs_cd
@@ -485,8 +465,6 @@ Resources:
           SerdeInfo:
             SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
         TableType: EXTERNAL_TABLE
-    Metadata:
-      aws:cdk:path: MimicivParquetDatabaseStack/hcpcsevents
   labevents:
     Type: AWS::Glue::Table
     Properties:
@@ -503,15 +481,17 @@ Resources:
         StorageDescriptor:
           Columns:
             - Name: labevent_id
-              Type: bigint
+              Type: int
             - Name: subject_id
-              Type: bigint
+              Type: int
             - Name: hadm_id
-              Type: bigint
+              Type: int
             - Name: specimen_id
-              Type: bigint
+              Type: int
             - Name: itemid
-              Type: bigint
+              Type: int
+            - Name: order_provider_id
+              Type: string
             - Name: charttime
               Type: timestamp
             - Name: storetime
@@ -538,8 +518,6 @@ Resources:
           SerdeInfo:
             SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
         TableType: EXTERNAL_TABLE
-    Metadata:
-      aws:cdk:path: MimicivParquetDatabaseStack/labevents
   microbiologyevents:
     Type: AWS::Glue::Table
     Properties:
@@ -556,13 +534,15 @@ Resources:
         StorageDescriptor:
           Columns:
             - Name: microevent_id
-              Type: bigint
+              Type: int
             - Name: subject_id
-              Type: bigint
+              Type: int
             - Name: hadm_id
-              Type: bigint
+              Type: int
             - Name: micro_specimen_id
-              Type: bigint
+              Type: int
+            - Name: order_provider_id
+              Type: string
             - Name: chartdate
               Type: timestamp
             - Name: charttime
@@ -609,8 +589,6 @@ Resources:
           SerdeInfo:
             SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
         TableType: EXTERNAL_TABLE
-    Metadata:
-      aws:cdk:path: MimicivParquetDatabaseStack/microbiologyevents
   omr:
     Type: AWS::Glue::Table
     Properties:
@@ -627,7 +605,7 @@ Resources:
         StorageDescriptor:
           Columns:
             - Name: subject_id
-              Type: bigint
+              Type: int
             - Name: chartdate
               Type: date
             - Name: seq_num
@@ -642,8 +620,6 @@ Resources:
           SerdeInfo:
             SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
         TableType: EXTERNAL_TABLE
-    Metadata:
-      aws:cdk:path: MimicivParquetDatabaseStack/omr
   patients:
     Type: AWS::Glue::Table
     Properties:
@@ -660,13 +636,13 @@ Resources:
         StorageDescriptor:
           Columns:
             - Name: subject_id
-              Type: bigint
+              Type: int
             - Name: gender
               Type: string
             - Name: anchor_age
-              Type: bigint
+              Type: smallint
             - Name: anchor_year
-              Type: bigint
+              Type: smallint
             - Name: anchor_year_group
               Type: string
             - Name: dod
@@ -677,8 +653,6 @@ Resources:
           SerdeInfo:
             SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
         TableType: EXTERNAL_TABLE
-    Metadata:
-      aws:cdk:path: MimicivParquetDatabaseStack/patients
   pharmacy:
     Type: AWS::Glue::Table
     Properties:
@@ -695,11 +669,11 @@ Resources:
         StorageDescriptor:
           Columns:
             - Name: subject_id
-              Type: bigint
+              Type: int
             - Name: hadm_id
-              Type: bigint
+              Type: int
             - Name: pharmacy_id
-              Type: bigint
+              Type: int
             - Name: poe_id
               Type: string
             - Name: starttime
@@ -754,8 +728,6 @@ Resources:
           SerdeInfo:
             SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
         TableType: EXTERNAL_TABLE
-    Metadata:
-      aws:cdk:path: MimicivParquetDatabaseStack/pharmacy
   poe:
     Type: AWS::Glue::Table
     Properties:
@@ -776,9 +748,9 @@ Resources:
             - Name: poe_seq
               Type: bigint
             - Name: subject_id
-              Type: bigint
+              Type: int
             - Name: hadm_id
-              Type: bigint
+              Type: int
             - Name: ordertime
               Type: timestamp
             - Name: order_type
@@ -791,6 +763,8 @@ Resources:
               Type: string
             - Name: discontinued_by_poe_id
               Type: string
+            - Name: order_provider_id
+              Type: string
             - Name: order_status
               Type: string
           InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
@@ -799,8 +773,6 @@ Resources:
           SerdeInfo:
             SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
         TableType: EXTERNAL_TABLE
-    Metadata:
-      aws:cdk:path: MimicivParquetDatabaseStack/poe
   poedetail:
     Type: AWS::Glue::Table
     Properties:
@@ -821,7 +793,7 @@ Resources:
             - Name: poe_seq
               Type: bigint
             - Name: subject_id
-              Type: bigint
+              Type: int
             - Name: field_name
               Type: string
             - Name: field_value
@@ -832,8 +804,6 @@ Resources:
           SerdeInfo:
             SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
         TableType: EXTERNAL_TABLE
-    Metadata:
-      aws:cdk:path: MimicivParquetDatabaseStack/poe_detail
   prescriptions:
     Type: AWS::Glue::Table
     Properties:
@@ -850,15 +820,17 @@ Resources:
         StorageDescriptor:
           Columns:
             - Name: subject_id
-              Type: bigint
+              Type: int
             - Name: hadm_id
-              Type: bigint
+              Type: int
             - Name: pharmacy_id
-              Type: bigint
+              Type: int
             - Name: poe_id
               Type: string
             - Name: poe_seq
               Type: bigint
+            - Name: order_provider_id
+              Type: string
             - Name: starttime
               Type: timestamp
             - Name: stoptime
@@ -895,8 +867,6 @@ Resources:
           SerdeInfo:
             SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
         TableType: EXTERNAL_TABLE
-    Metadata:
-      aws:cdk:path: MimicivParquetDatabaseStack/prescriptions
   proceduresicd:
     Type: AWS::Glue::Table
     Properties:
@@ -913,9 +883,9 @@ Resources:
         StorageDescriptor:
           Columns:
             - Name: subject_id
-              Type: bigint
+              Type: int
             - Name: hadm_id
-              Type: bigint
+              Type: int
             - Name: seq_num
               Type: bigint
             - Name: chartdate
@@ -923,15 +893,36 @@ Resources:
             - Name: icd_code
               Type: string
             - Name: icd_version
-              Type: bigint
+              Type: smallint
           InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
           Location: s3://mimiciv-physionet/parquet/hosp/procedures_icd/
           OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
           SerdeInfo:
             SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
         TableType: EXTERNAL_TABLE
-    Metadata:
-      aws:cdk:path: MimicivParquetDatabaseStack/procedures_icd
+  provider:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv provider table
+        Name: provider
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: provider_id
+              Type: string
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/hosp/provider/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
   services:
     Type: AWS::Glue::Table
     Properties:
@@ -948,9 +939,9 @@ Resources:
         StorageDescriptor:
           Columns:
             - Name: subject_id
-              Type: bigint
+              Type: int
             - Name: hadm_id
-              Type: bigint
+              Type: int
             - Name: transfertime
               Type: timestamp
             - Name: prev_service
@@ -963,8 +954,6 @@ Resources:
           SerdeInfo:
             SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
         TableType: EXTERNAL_TABLE
-    Metadata:
-      aws:cdk:path: MimicivParquetDatabaseStack/services
   transfers:
     Type: AWS::Glue::Table
     Properties:
@@ -981,11 +970,11 @@ Resources:
         StorageDescriptor:
           Columns:
             - Name: subject_id
-              Type: bigint
+              Type: int
             - Name: hadm_id
-              Type: bigint
+              Type: int
             - Name: transfer_id
-              Type: bigint
+              Type: int
             - Name: eventtype
               Type: string
             - Name: careunit
@@ -1000,8 +989,29 @@ Resources:
           SerdeInfo:
             SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
         TableType: EXTERNAL_TABLE
-    Metadata:
-      aws:cdk:path: MimicivParquetDatabaseStack/transfers
+  caregiver:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv caregiver table
+        Name: caregiver
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: caregiver_id
+              Type: int
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/icu/caregiver/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
   chartevents:
     Type: AWS::Glue::Table
     Properties:
@@ -1018,17 +1028,19 @@ Resources:
         StorageDescriptor:
           Columns:
             - Name: subject_id
-              Type: bigint
+              Type: int
             - Name: hadm_id
-              Type: bigint
+              Type: int
             - Name: stay_id
-              Type: bigint
+              Type: int
+            - Name: caregiver_id
+              Type: int
             - Name: charttime
               Type: timestamp
             - Name: storetime
               Type: timestamp
             - Name: itemid
-              Type: bigint
+              Type: int
             - Name: value
               Type: string
             - Name: valuenum
@@ -1036,15 +1048,13 @@ Resources:
             - Name: valueuom
               Type: string
             - Name: warning
-              Type: bigint
+              Type: smallint
           InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
           Location: s3://mimiciv-physionet/parquet/icu/chartevents/
           OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
           SerdeInfo:
             SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
         TableType: EXTERNAL_TABLE
-    Metadata:
-      aws:cdk:path: MimicivParquetDatabaseStack/chartevents
   ditems:
     Type: AWS::Glue::Table
     Properties:
@@ -1061,7 +1071,7 @@ Resources:
         StorageDescriptor:
           Columns:
             - Name: itemid
-              Type: bigint
+              Type: int
             - Name: label
               Type: string
             - Name: abbreviation
@@ -1084,8 +1094,6 @@ Resources:
           SerdeInfo:
             SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
         TableType: EXTERNAL_TABLE
-    Metadata:
-      aws:cdk:path: MimicivParquetDatabaseStack/d_items
   datetimeevents:
     Type: AWS::Glue::Table
     Properties:
@@ -1102,31 +1110,31 @@ Resources:
         StorageDescriptor:
           Columns:
             - Name: subject_id
-              Type: bigint
+              Type: int
             - Name: hadm_id
-              Type: bigint
+              Type: int
             - Name: stay_id
-              Type: bigint
+              Type: int
+            - Name: caregiver_id
+              Type: int
             - Name: charttime
               Type: timestamp
             - Name: storetime
               Type: timestamp
             - Name: itemid
-              Type: bigint
+              Type: int
             - Name: value
               Type: timestamp
             - Name: valueuom
               Type: string
             - Name: warning
-              Type: bigint
+              Type: smallint
           InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
           Location: s3://mimiciv-physionet/parquet/icu/datetimeevents/
           OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
           SerdeInfo:
             SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
         TableType: EXTERNAL_TABLE
-    Metadata:
-      aws:cdk:path: MimicivParquetDatabaseStack/datetimeevents
   icustays:
     Type: AWS::Glue::Table
     Properties:
@@ -1143,11 +1151,11 @@ Resources:
         StorageDescriptor:
           Columns:
             - Name: subject_id
-              Type: bigint
+              Type: int
             - Name: hadm_id
-              Type: bigint
+              Type: int
             - Name: stay_id
-              Type: bigint
+              Type: int
             - Name: first_careunit
               Type: string
             - Name: last_careunit
@@ -1164,8 +1172,6 @@ Resources:
           SerdeInfo:
             SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
         TableType: EXTERNAL_TABLE
-    Metadata:
-      aws:cdk:path: MimicivParquetDatabaseStack/icustays
   ingredientevents:
     Type: AWS::Glue::Table
     Properties:
@@ -1182,11 +1188,13 @@ Resources:
         StorageDescriptor:
           Columns:
             - Name: subject_id
-              Type: bigint
+              Type: int
             - Name: hadm_id
-              Type: bigint
+              Type: int
             - Name: stay_id
-              Type: bigint
+              Type: int
+            - Name: caregiver_id
+              Type: int
             - Name: starttime
               Type: timestamp
             - Name: endtime
@@ -1194,7 +1202,7 @@ Resources:
             - Name: storetime
               Type: timestamp
             - Name: itemid
-              Type: bigint
+              Type: int
             - Name: amount
               Type: float
             - Name: amountuom
@@ -1219,8 +1227,6 @@ Resources:
           SerdeInfo:
             SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
         TableType: EXTERNAL_TABLE
-    Metadata:
-      aws:cdk:path: MimicivParquetDatabaseStack/ingredientevents
   inputevents:
     Type: AWS::Glue::Table
     Properties:
@@ -1237,11 +1243,13 @@ Resources:
         StorageDescriptor:
           Columns:
             - Name: subject_id
-              Type: bigint
+              Type: int
             - Name: hadm_id
-              Type: bigint
+              Type: int
             - Name: stay_id
-              Type: bigint
+              Type: int
+            - Name: caregiver_id
+              Type: int
             - Name: starttime
               Type: timestamp
             - Name: endtime
@@ -1249,7 +1257,7 @@ Resources:
             - Name: storetime
               Type: timestamp
             - Name: itemid
-              Type: bigint
+              Type: int
             - Name: amount
               Type: float
             - Name: amountuom
@@ -1292,8 +1300,6 @@ Resources:
           SerdeInfo:
             SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
         TableType: EXTERNAL_TABLE
-    Metadata:
-      aws:cdk:path: MimicivParquetDatabaseStack/inputevents
   outputevents:
     Type: AWS::Glue::Table
     Properties:
@@ -1310,17 +1316,19 @@ Resources:
         StorageDescriptor:
           Columns:
             - Name: subject_id
-              Type: bigint
+              Type: int
             - Name: hadm_id
-              Type: bigint
+              Type: int
             - Name: stay_id
-              Type: bigint
+              Type: int
+            - Name: caregiver_id
+              Type: int
             - Name: charttime
               Type: timestamp
             - Name: storetime
               Type: timestamp
             - Name: itemid
-              Type: bigint
+              Type: int
             - Name: value
               Type: float
             - Name: valueuom
@@ -1331,8 +1339,6 @@ Resources:
           SerdeInfo:
             SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
         TableType: EXTERNAL_TABLE
-    Metadata:
-      aws:cdk:path: MimicivParquetDatabaseStack/outputevents
   procedureevents:
     Type: AWS::Glue::Table
     Properties:
@@ -1349,11 +1355,13 @@ Resources:
         StorageDescriptor:
           Columns:
             - Name: subject_id
-              Type: bigint
+              Type: int
             - Name: hadm_id
-              Type: bigint
+              Type: int
             - Name: stay_id
-              Type: bigint
+              Type: int
+            - Name: caregiver_id
+              Type: int
             - Name: starttime
               Type: timestamp
             - Name: endtime
@@ -1361,7 +1369,7 @@ Resources:
             - Name: storetime
               Type: timestamp
             - Name: itemid
-              Type: bigint
+              Type: int
             - Name: value
               Type: float
             - Name: valueuom
@@ -1396,8 +1404,2761 @@ Resources:
           SerdeInfo:
             SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
         TableType: EXTERNAL_TABLE
-    Metadata:
-      aws:cdk:path: MimicivParquetDatabaseStack/procedureevents
+  derivedage:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv derived_age table
+        Name: derived_age
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: subject_id
+              Type: int
+            - Name: hadm_id
+              Type: int
+            - Name: admittime
+              Type: timestamp
+            - Name: anchor_age
+              Type: smallint
+            - Name: anchor_year
+              Type: smallint
+            - Name: age
+              Type: decimal(28,6)
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/derived/age/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
+  derivedantibiotic:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv derived_antibiotic table
+        Name: derived_antibiotic
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: subject_id
+              Type: int
+            - Name: hadm_id
+              Type: int
+            - Name: stay_id
+              Type: int
+            - Name: antibiotic
+              Type: string
+            - Name: route
+              Type: string
+            - Name: starttime
+              Type: timestamp
+            - Name: stoptime
+              Type: timestamp
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/derived/antibiotic/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
+  derivedapsiii:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv derived_apsiii table
+        Name: derived_apsiii
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: subject_id
+              Type: int
+            - Name: hadm_id
+              Type: int
+            - Name: stay_id
+              Type: int
+            - Name: apsiii
+              Type: int
+            - Name: apsiii_prob
+              Type: decimal(28,6)
+            - Name: hr_score
+              Type: int
+            - Name: mbp_score
+              Type: int
+            - Name: temp_score
+              Type: int
+            - Name: resp_rate_score
+              Type: int
+            - Name: pao2_aado2_score
+              Type: int
+            - Name: hematocrit_score
+              Type: int
+            - Name: wbc_score
+              Type: int
+            - Name: creatinine_score
+              Type: int
+            - Name: uo_score
+              Type: int
+            - Name: bun_score
+              Type: int
+            - Name: sodium_score
+              Type: int
+            - Name: albumin_score
+              Type: int
+            - Name: bilirubin_score
+              Type: int
+            - Name: glucose_score
+              Type: int
+            - Name: acidbase_score
+              Type: int
+            - Name: gcs_score
+              Type: int
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/derived/apsiii/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
+  derivedbg:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv derived_bg table
+        Name: derived_bg
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: subject_id
+              Type: int
+            - Name: hadm_id
+              Type: int
+            - Name: charttime
+              Type: timestamp
+            - Name: specimen
+              Type: string
+            - Name: so2
+              Type: double
+            - Name: po2
+              Type: double
+            - Name: pco2
+              Type: double
+            - Name: fio2_chartevents
+              Type: double
+            - Name: fio2
+              Type: double
+            - Name: aado2
+              Type: double
+            - Name: aado2_calc
+              Type: double
+            - Name: pao2fio2ratio
+              Type: double
+            - Name: ph
+              Type: double
+            - Name: baseexcess
+              Type: double
+            - Name: bicarbonate
+              Type: double
+            - Name: totalco2
+              Type: double
+            - Name: hematocrit
+              Type: double
+            - Name: hemoglobin
+              Type: double
+            - Name: carboxyhemoglobin
+              Type: double
+            - Name: methemoglobin
+              Type: double
+            - Name: chloride
+              Type: double
+            - Name: calcium
+              Type: double
+            - Name: temperature
+              Type: double
+            - Name: potassium
+              Type: double
+            - Name: sodium
+              Type: double
+            - Name: lactate
+              Type: double
+            - Name: glucose
+              Type: double
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/derived/bg/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
+  derivedblooddifferential:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv derived_blood_differential table
+        Name: derived_blood_differential
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: subject_id
+              Type: int
+            - Name: hadm_id
+              Type: int
+            - Name: charttime
+              Type: timestamp
+            - Name: specimen_id
+              Type: int
+            - Name: wbc
+              Type: double
+            - Name: basophils_abs
+              Type: decimal(28,6)
+            - Name: eosinophils_abs
+              Type: decimal(28,6)
+            - Name: lymphocytes_abs
+              Type: decimal(28,6)
+            - Name: monocytes_abs
+              Type: decimal(28,6)
+            - Name: neutrophils_abs
+              Type: decimal(28,6)
+            - Name: basophils
+              Type: double
+            - Name: eosinophils
+              Type: double
+            - Name: lymphocytes
+              Type: double
+            - Name: monocytes
+              Type: double
+            - Name: neutrophils
+              Type: double
+            - Name: atypical_lymphocytes
+              Type: double
+            - Name: bands
+              Type: double
+            - Name: immature_granulocytes
+              Type: double
+            - Name: metamyelocytes
+              Type: double
+            - Name: nrbc
+              Type: double
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/derived/blood_differential/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
+  derivedcardiacmarker:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv derived_cardiac_marker table
+        Name: derived_cardiac_marker
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: subject_id
+              Type: int
+            - Name: hadm_id
+              Type: int
+            - Name: charttime
+              Type: timestamp
+            - Name: specimen_id
+              Type: int
+            - Name: troponin_t
+              Type: string
+            - Name: ck_mb
+              Type: double
+            - Name: ntprobnp
+              Type: double
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/derived/cardiac_marker/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
+  derivedcharlson:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv derived_charlson table
+        Name: derived_charlson
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: subject_id
+              Type: int
+            - Name: hadm_id
+              Type: int
+            - Name: age_score
+              Type: int
+            - Name: myocardial_infarct
+              Type: int
+            - Name: congestive_heart_failure
+              Type: int
+            - Name: peripheral_vascular_disease
+              Type: int
+            - Name: cerebrovascular_disease
+              Type: int
+            - Name: dementia
+              Type: int
+            - Name: chronic_pulmonary_disease
+              Type: int
+            - Name: rheumatic_disease
+              Type: int
+            - Name: peptic_ulcer_disease
+              Type: int
+            - Name: mild_liver_disease
+              Type: int
+            - Name: diabetes_without_cc
+              Type: int
+            - Name: diabetes_with_cc
+              Type: int
+            - Name: paraplegia
+              Type: int
+            - Name: renal_disease
+              Type: int
+            - Name: malignant_cancer
+              Type: int
+            - Name: severe_liver_disease
+              Type: int
+            - Name: metastatic_solid_tumor
+              Type: int
+            - Name: aids
+              Type: int
+            - Name: charlson_comorbidity_index
+              Type: int
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/derived/charlson/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
+  derivedchemistry:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv derived_chemistry table
+        Name: derived_chemistry
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: subject_id
+              Type: int
+            - Name: hadm_id
+              Type: int
+            - Name: charttime
+              Type: timestamp
+            - Name: specimen_id
+              Type: int
+            - Name: albumin
+              Type: double
+            - Name: globulin
+              Type: double
+            - Name: total_protein
+              Type: double
+            - Name: aniongap
+              Type: double
+            - Name: bicarbonate
+              Type: double
+            - Name: bun
+              Type: double
+            - Name: calcium
+              Type: double
+            - Name: chloride
+              Type: double
+            - Name: creatinine
+              Type: double
+            - Name: glucose
+              Type: double
+            - Name: sodium
+              Type: double
+            - Name: potassium
+              Type: double
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/derived/chemistry/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
+  derivedcoagulation:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv derived_coagulation table
+        Name: derived_coagulation
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: subject_id
+              Type: int
+            - Name: hadm_id
+              Type: int
+            - Name: charttime
+              Type: timestamp
+            - Name: specimen_id
+              Type: int
+            - Name: d_dimer
+              Type: double
+            - Name: fibrinogen
+              Type: double
+            - Name: thrombin
+              Type: double
+            - Name: inr
+              Type: double
+            - Name: pt
+              Type: double
+            - Name: ptt
+              Type: double
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/derived/coagulation/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
+  derivedcompletebloodcount:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv derived_complete_blood_count table
+        Name: derived_complete_blood_count
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: subject_id
+              Type: int
+            - Name: hadm_id
+              Type: int
+            - Name: charttime
+              Type: timestamp
+            - Name: specimen_id
+              Type: int
+            - Name: hematocrit
+              Type: double
+            - Name: hemoglobin
+              Type: double
+            - Name: mch
+              Type: double
+            - Name: mchc
+              Type: double
+            - Name: mcv
+              Type: double
+            - Name: platelet
+              Type: double
+            - Name: rbc
+              Type: double
+            - Name: rdw
+              Type: double
+            - Name: rdwsd
+              Type: double
+            - Name: wbc
+              Type: double
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/derived/complete_blood_count/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
+  derivedcreatininebaseline:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv derived_creatinine_baseline table
+        Name: derived_creatinine_baseline
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: hadm_id
+              Type: int
+            - Name: gender
+              Type: string
+            - Name: age
+              Type: decimal(28,6)
+            - Name: scr_min
+              Type: double
+            - Name: ckd
+              Type: int
+            - Name: mdrd_est
+              Type: decimal(28,6)
+            - Name: scr_baseline
+              Type: double
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/derived/creatinine_baseline/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
+  derivedcrrt:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv derived_crrt table
+        Name: derived_crrt
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: stay_id
+              Type: int
+            - Name: charttime
+              Type: timestamp
+            - Name: crrt_mode
+              Type: string
+            - Name: access_pressure
+              Type: double
+            - Name: blood_flow
+              Type: double
+            - Name: citrate
+              Type: double
+            - Name: current_goal
+              Type: double
+            - Name: dialysate_fluid
+              Type: string
+            - Name: dialysate_rate
+              Type: double
+            - Name: effluent_pressure
+              Type: double
+            - Name: filter_pressure
+              Type: double
+            - Name: heparin_concentration
+              Type: string
+            - Name: heparin_dose
+              Type: double
+            - Name: hourly_patient_fluid_removal
+              Type: double
+            - Name: prefilter_replacement_rate
+              Type: double
+            - Name: postfilter_replacement_rate
+              Type: double
+            - Name: replacement_fluid
+              Type: string
+            - Name: replacement_rate
+              Type: double
+            - Name: return_pressure
+              Type: double
+            - Name: ultrafiltrate_output
+              Type: double
+            - Name: system_active
+              Type: int
+            - Name: clots
+              Type: int
+            - Name: clots_increasing
+              Type: int
+            - Name: clotted
+              Type: int
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/derived/crrt/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
+  deriveddobutamine:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv derived_dobutamine table
+        Name: derived_dobutamine
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: stay_id
+              Type: int
+            - Name: linkorderid
+              Type: int
+            - Name: vaso_rate
+              Type: double
+            - Name: vaso_amount
+              Type: double
+            - Name: starttime
+              Type: timestamp
+            - Name: endtime
+              Type: timestamp
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/derived/dobutamine/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
+  deriveddopamine:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv derived_dopamine table
+        Name: derived_dopamine
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: stay_id
+              Type: int
+            - Name: linkorderid
+              Type: int
+            - Name: vaso_rate
+              Type: double
+            - Name: vaso_amount
+              Type: double
+            - Name: starttime
+              Type: timestamp
+            - Name: endtime
+              Type: timestamp
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/derived/dopamine/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
+  derivedenzyme:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv derived_enzyme table
+        Name: derived_enzyme
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: subject_id
+              Type: int
+            - Name: hadm_id
+              Type: int
+            - Name: charttime
+              Type: timestamp
+            - Name: specimen_id
+              Type: int
+            - Name: alt
+              Type: double
+            - Name: alp
+              Type: double
+            - Name: ast
+              Type: double
+            - Name: amylase
+              Type: double
+            - Name: bilirubin_total
+              Type: double
+            - Name: bilirubin_direct
+              Type: double
+            - Name: bilirubin_indirect
+              Type: double
+            - Name: ck_cpk
+              Type: double
+            - Name: ck_mb
+              Type: double
+            - Name: ggt
+              Type: double
+            - Name: ld_ldh
+              Type: double
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/derived/enzyme/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
+  derivedepinephrine:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv derived_epinephrine table
+        Name: derived_epinephrine
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: stay_id
+              Type: int
+            - Name: linkorderid
+              Type: int
+            - Name: vaso_rate
+              Type: double
+            - Name: vaso_amount
+              Type: double
+            - Name: starttime
+              Type: timestamp
+            - Name: endtime
+              Type: timestamp
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/derived/epinephrine/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
+  derivedfirstdaybg:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv derived_first_day_bg table
+        Name: derived_first_day_bg
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: subject_id
+              Type: int
+            - Name: stay_id
+              Type: int
+            - Name: lactate_min
+              Type: double
+            - Name: lactate_max
+              Type: double
+            - Name: ph_min
+              Type: double
+            - Name: ph_max
+              Type: double
+            - Name: so2_min
+              Type: double
+            - Name: so2_max
+              Type: double
+            - Name: po2_min
+              Type: double
+            - Name: po2_max
+              Type: double
+            - Name: pco2_min
+              Type: double
+            - Name: pco2_max
+              Type: double
+            - Name: aado2_min
+              Type: double
+            - Name: aado2_max
+              Type: double
+            - Name: aado2_calc_min
+              Type: double
+            - Name: aado2_calc_max
+              Type: double
+            - Name: pao2fio2ratio_min
+              Type: double
+            - Name: pao2fio2ratio_max
+              Type: double
+            - Name: baseexcess_min
+              Type: double
+            - Name: baseexcess_max
+              Type: double
+            - Name: bicarbonate_min
+              Type: double
+            - Name: bicarbonate_max
+              Type: double
+            - Name: totalco2_min
+              Type: double
+            - Name: totalco2_max
+              Type: double
+            - Name: hematocrit_min
+              Type: double
+            - Name: hematocrit_max
+              Type: double
+            - Name: hemoglobin_min
+              Type: double
+            - Name: hemoglobin_max
+              Type: double
+            - Name: carboxyhemoglobin_min
+              Type: double
+            - Name: carboxyhemoglobin_max
+              Type: double
+            - Name: methemoglobin_min
+              Type: double
+            - Name: methemoglobin_max
+              Type: double
+            - Name: temperature_min
+              Type: double
+            - Name: temperature_max
+              Type: double
+            - Name: chloride_min
+              Type: double
+            - Name: chloride_max
+              Type: double
+            - Name: calcium_min
+              Type: double
+            - Name: calcium_max
+              Type: double
+            - Name: glucose_min
+              Type: double
+            - Name: glucose_max
+              Type: double
+            - Name: potassium_min
+              Type: double
+            - Name: potassium_max
+              Type: double
+            - Name: sodium_min
+              Type: double
+            - Name: sodium_max
+              Type: double
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/derived/first_day_bg/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
+  derivedfirstdaybgart:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv derived_first_day_bg_art table
+        Name: derived_first_day_bg_art
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: subject_id
+              Type: int
+            - Name: stay_id
+              Type: int
+            - Name: lactate_min
+              Type: double
+            - Name: lactate_max
+              Type: double
+            - Name: ph_min
+              Type: double
+            - Name: ph_max
+              Type: double
+            - Name: so2_min
+              Type: double
+            - Name: so2_max
+              Type: double
+            - Name: po2_min
+              Type: double
+            - Name: po2_max
+              Type: double
+            - Name: pco2_min
+              Type: double
+            - Name: pco2_max
+              Type: double
+            - Name: aado2_min
+              Type: double
+            - Name: aado2_max
+              Type: double
+            - Name: aado2_calc_min
+              Type: double
+            - Name: aado2_calc_max
+              Type: double
+            - Name: pao2fio2ratio_min
+              Type: double
+            - Name: pao2fio2ratio_max
+              Type: double
+            - Name: baseexcess_min
+              Type: double
+            - Name: baseexcess_max
+              Type: double
+            - Name: bicarbonate_min
+              Type: double
+            - Name: bicarbonate_max
+              Type: double
+            - Name: totalco2_min
+              Type: double
+            - Name: totalco2_max
+              Type: double
+            - Name: hematocrit_min
+              Type: double
+            - Name: hematocrit_max
+              Type: double
+            - Name: hemoglobin_min
+              Type: double
+            - Name: hemoglobin_max
+              Type: double
+            - Name: carboxyhemoglobin_min
+              Type: double
+            - Name: carboxyhemoglobin_max
+              Type: double
+            - Name: methemoglobin_min
+              Type: double
+            - Name: methemoglobin_max
+              Type: double
+            - Name: temperature_min
+              Type: double
+            - Name: temperature_max
+              Type: double
+            - Name: chloride_min
+              Type: double
+            - Name: chloride_max
+              Type: double
+            - Name: calcium_min
+              Type: double
+            - Name: calcium_max
+              Type: double
+            - Name: glucose_min
+              Type: double
+            - Name: glucose_max
+              Type: double
+            - Name: potassium_min
+              Type: double
+            - Name: potassium_max
+              Type: double
+            - Name: sodium_min
+              Type: double
+            - Name: sodium_max
+              Type: double
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/derived/first_day_bg_art/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
+  derivedfirstdaygcs:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv derived_first_day_gcs table
+        Name: derived_first_day_gcs
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: subject_id
+              Type: int
+            - Name: stay_id
+              Type: int
+            - Name: gcs_min
+              Type: double
+            - Name: gcs_motor
+              Type: double
+            - Name: gcs_verbal
+              Type: double
+            - Name: gcs_eyes
+              Type: double
+            - Name: gcs_unable
+              Type: int
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/derived/first_day_gcs/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
+  derivedfirstdayheight:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv derived_first_day_height table
+        Name: derived_first_day_height
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: subject_id
+              Type: int
+            - Name: stay_id
+              Type: int
+            - Name: height
+              Type: decimal(28,6)
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/derived/first_day_height/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
+  derivedfirstdaylab:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv derived_first_day_lab table
+        Name: derived_first_day_lab
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: subject_id
+              Type: int
+            - Name: stay_id
+              Type: int
+            - Name: hematocrit_min
+              Type: double
+            - Name: hematocrit_max
+              Type: double
+            - Name: hemoglobin_min
+              Type: double
+            - Name: hemoglobin_max
+              Type: double
+            - Name: platelets_min
+              Type: double
+            - Name: platelets_max
+              Type: double
+            - Name: wbc_min
+              Type: double
+            - Name: wbc_max
+              Type: double
+            - Name: albumin_min
+              Type: double
+            - Name: albumin_max
+              Type: double
+            - Name: globulin_min
+              Type: double
+            - Name: globulin_max
+              Type: double
+            - Name: total_protein_min
+              Type: double
+            - Name: total_protein_max
+              Type: double
+            - Name: aniongap_min
+              Type: double
+            - Name: aniongap_max
+              Type: double
+            - Name: bicarbonate_min
+              Type: double
+            - Name: bicarbonate_max
+              Type: double
+            - Name: bun_min
+              Type: double
+            - Name: bun_max
+              Type: double
+            - Name: calcium_min
+              Type: double
+            - Name: calcium_max
+              Type: double
+            - Name: chloride_min
+              Type: double
+            - Name: chloride_max
+              Type: double
+            - Name: creatinine_min
+              Type: double
+            - Name: creatinine_max
+              Type: double
+            - Name: glucose_min
+              Type: double
+            - Name: glucose_max
+              Type: double
+            - Name: sodium_min
+              Type: double
+            - Name: sodium_max
+              Type: double
+            - Name: potassium_min
+              Type: double
+            - Name: potassium_max
+              Type: double
+            - Name: abs_basophils_min
+              Type: decimal(28,6)
+            - Name: abs_basophils_max
+              Type: decimal(28,6)
+            - Name: abs_eosinophils_min
+              Type: decimal(28,6)
+            - Name: abs_eosinophils_max
+              Type: decimal(28,6)
+            - Name: abs_lymphocytes_min
+              Type: decimal(28,6)
+            - Name: abs_lymphocytes_max
+              Type: decimal(28,6)
+            - Name: abs_monocytes_min
+              Type: decimal(28,6)
+            - Name: abs_monocytes_max
+              Type: decimal(28,6)
+            - Name: abs_neutrophils_min
+              Type: decimal(28,6)
+            - Name: abs_neutrophils_max
+              Type: decimal(28,6)
+            - Name: atyps_min
+              Type: double
+            - Name: atyps_max
+              Type: double
+            - Name: bands_min
+              Type: double
+            - Name: bands_max
+              Type: double
+            - Name: imm_granulocytes_min
+              Type: double
+            - Name: imm_granulocytes_max
+              Type: double
+            - Name: metas_min
+              Type: double
+            - Name: metas_max
+              Type: double
+            - Name: nrbc_min
+              Type: double
+            - Name: nrbc_max
+              Type: double
+            - Name: d_dimer_min
+              Type: double
+            - Name: d_dimer_max
+              Type: double
+            - Name: fibrinogen_min
+              Type: double
+            - Name: fibrinogen_max
+              Type: double
+            - Name: thrombin_min
+              Type: double
+            - Name: thrombin_max
+              Type: double
+            - Name: inr_min
+              Type: double
+            - Name: inr_max
+              Type: double
+            - Name: pt_min
+              Type: double
+            - Name: pt_max
+              Type: double
+            - Name: ptt_min
+              Type: double
+            - Name: ptt_max
+              Type: double
+            - Name: alt_min
+              Type: double
+            - Name: alt_max
+              Type: double
+            - Name: alp_min
+              Type: double
+            - Name: alp_max
+              Type: double
+            - Name: ast_min
+              Type: double
+            - Name: ast_max
+              Type: double
+            - Name: amylase_min
+              Type: double
+            - Name: amylase_max
+              Type: double
+            - Name: bilirubin_total_min
+              Type: double
+            - Name: bilirubin_total_max
+              Type: double
+            - Name: bilirubin_direct_min
+              Type: double
+            - Name: bilirubin_direct_max
+              Type: double
+            - Name: bilirubin_indirect_min
+              Type: double
+            - Name: bilirubin_indirect_max
+              Type: double
+            - Name: ck_cpk_min
+              Type: double
+            - Name: ck_cpk_max
+              Type: double
+            - Name: ck_mb_min
+              Type: double
+            - Name: ck_mb_max
+              Type: double
+            - Name: ggt_min
+              Type: double
+            - Name: ggt_max
+              Type: double
+            - Name: ld_ldh_min
+              Type: double
+            - Name: ld_ldh_max
+              Type: double
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/derived/first_day_lab/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
+  derivedfirstdayrrt:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv derived_first_day_rrt table
+        Name: derived_first_day_rrt
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: subject_id
+              Type: int
+            - Name: stay_id
+              Type: int
+            - Name: dialysis_present
+              Type: int
+            - Name: dialysis_active
+              Type: int
+            - Name: dialysis_type
+              Type: string
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/derived/first_day_rrt/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
+  derivedfirstdaysofa:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv derived_first_day_sofa table
+        Name: derived_first_day_sofa
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: subject_id
+              Type: int
+            - Name: hadm_id
+              Type: int
+            - Name: stay_id
+              Type: int
+            - Name: sofa
+              Type: int
+            - Name: respiration
+              Type: int
+            - Name: coagulation
+              Type: int
+            - Name: liver
+              Type: int
+            - Name: cardiovascular
+              Type: int
+            - Name: cns
+              Type: int
+            - Name: renal
+              Type: int
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/derived/first_day_sofa/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
+  derivedfirstdayurineoutput:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv derived_first_day_urine_output table
+        Name: derived_first_day_urine_output
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: subject_id
+              Type: int
+            - Name: stay_id
+              Type: int
+            - Name: urineoutput
+              Type: double
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/derived/first_day_urine_output/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
+  derivedfirstdayvitalsign:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv derived_first_day_vitalsign table
+        Name: derived_first_day_vitalsign
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: subject_id
+              Type: int
+            - Name: stay_id
+              Type: int
+            - Name: heart_rate_min
+              Type: double
+            - Name: heart_rate_max
+              Type: double
+            - Name: heart_rate_mean
+              Type: double
+            - Name: sbp_min
+              Type: double
+            - Name: sbp_max
+              Type: double
+            - Name: sbp_mean
+              Type: double
+            - Name: dbp_min
+              Type: double
+            - Name: dbp_max
+              Type: double
+            - Name: dbp_mean
+              Type: double
+            - Name: mbp_min
+              Type: double
+            - Name: mbp_max
+              Type: double
+            - Name: mbp_mean
+              Type: double
+            - Name: resp_rate_min
+              Type: double
+            - Name: resp_rate_max
+              Type: double
+            - Name: resp_rate_mean
+              Type: double
+            - Name: temperature_min
+              Type: decimal(28,6)
+            - Name: temperature_max
+              Type: decimal(28,6)
+            - Name: temperature_mean
+              Type: decimal(28,6)
+            - Name: spo2_min
+              Type: double
+            - Name: spo2_max
+              Type: double
+            - Name: spo2_mean
+              Type: double
+            - Name: glucose_min
+              Type: double
+            - Name: glucose_max
+              Type: double
+            - Name: glucose_mean
+              Type: double
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/derived/first_day_vitalsign/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
+  derivedfirstdayweight:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv derived_first_day_weight table
+        Name: derived_first_day_weight
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: subject_id
+              Type: int
+            - Name: stay_id
+              Type: int
+            - Name: weight_admit
+              Type: double
+            - Name: weight
+              Type: double
+            - Name: weight_min
+              Type: double
+            - Name: weight_max
+              Type: double
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/derived/first_day_weight/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
+  derivedgcs:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv derived_gcs table
+        Name: derived_gcs
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: subject_id
+              Type: int
+            - Name: stay_id
+              Type: int
+            - Name: charttime
+              Type: timestamp
+            - Name: gcs
+              Type: double
+            - Name: gcs_motor
+              Type: double
+            - Name: gcs_verbal
+              Type: double
+            - Name: gcs_eyes
+              Type: double
+            - Name: gcs_unable
+              Type: int
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/derived/gcs/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
+  derivedheight:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv derived_height table
+        Name: derived_height
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: subject_id
+              Type: int
+            - Name: stay_id
+              Type: int
+            - Name: charttime
+              Type: timestamp
+            - Name: height
+              Type: decimal(28,6)
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/derived/height/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
+  derivedicp:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv derived_icp table
+        Name: derived_icp
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: subject_id
+              Type: int
+            - Name: stay_id
+              Type: int
+            - Name: charttime
+              Type: timestamp
+            - Name: icp
+              Type: double
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/derived/icp/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
+  derivedicustaydetail:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv derived_icustay_detail table
+        Name: derived_icustay_detail
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: subject_id
+              Type: int
+            - Name: hadm_id
+              Type: int
+            - Name: stay_id
+              Type: int
+            - Name: gender
+              Type: string
+            - Name: dod
+              Type: date
+            - Name: admittime
+              Type: timestamp
+            - Name: dischtime
+              Type: timestamp
+            - Name: los_hospital
+              Type: decimal(28,6)
+            - Name: admission_age
+              Type: decimal(28,6)
+            - Name: race
+              Type: string
+            - Name: hospital_expire_flag
+              Type: smallint
+            - Name: hospstay_seq
+              Type: bigint
+            - Name: first_hosp_stay
+              Type: string
+            - Name: icu_intime
+              Type: timestamp
+            - Name: icu_outtime
+              Type: timestamp
+            - Name: los_icu
+              Type: decimal(28,6)
+            - Name: icustay_seq
+              Type: bigint
+            - Name: first_icu_stay
+              Type: string
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/derived/icustay_detail/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
+  derivedicustayhourly:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv derived_icustay_hourly table
+        Name: derived_icustay_hourly
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: stay_id
+              Type: int
+            - Name: hr
+              Type: bigint
+            - Name: endtime
+              Type: timestamp
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/derived/icustay_hourly/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
+  derivedicustaytimes:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv derived_icustay_times table
+        Name: derived_icustay_times
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: subject_id
+              Type: int
+            - Name: hadm_id
+              Type: int
+            - Name: stay_id
+              Type: int
+            - Name: intime_hr
+              Type: timestamp
+            - Name: outtime_hr
+              Type: timestamp
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/derived/icustay_times/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
+  derivedinflammation:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv derived_inflammation table
+        Name: derived_inflammation
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: subject_id
+              Type: int
+            - Name: hadm_id
+              Type: int
+            - Name: charttime
+              Type: timestamp
+            - Name: specimen_id
+              Type: int
+            - Name: crp
+              Type: double
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/derived/inflammation/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
+  derivedinvasiveline:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv derived_invasive_line table
+        Name: derived_invasive_line
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: stay_id
+              Type: int
+            - Name: line_type
+              Type: string
+            - Name: line_site
+              Type: string
+            - Name: starttime
+              Type: timestamp
+            - Name: endtime
+              Type: timestamp
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/derived/invasive_line/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
+  derivedkdigocreatinine:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv derived_kdigo_creatinine table
+        Name: derived_kdigo_creatinine
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: hadm_id
+              Type: int
+            - Name: stay_id
+              Type: int
+            - Name: charttime
+              Type: timestamp
+            - Name: creat
+              Type: double
+            - Name: creat_low_past_48hr
+              Type: double
+            - Name: creat_low_past_7day
+              Type: double
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/derived/kdigo_creatinine/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
+  derivedlods:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv derived_lods table
+        Name: derived_lods
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: subject_id
+              Type: int
+            - Name: hadm_id
+              Type: int
+            - Name: stay_id
+              Type: int
+            - Name: lods
+              Type: int
+            - Name: neurologic
+              Type: int
+            - Name: cardiovascular
+              Type: int
+            - Name: renal
+              Type: int
+            - Name: pulmonary
+              Type: int
+            - Name: hematologic
+              Type: int
+            - Name: hepatic
+              Type: int
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/derived/lods/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
+  derivedmeld:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv derived_meld table
+        Name: derived_meld
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: subject_id
+              Type: int
+            - Name: hadm_id
+              Type: int
+            - Name: stay_id
+              Type: int
+            - Name: meld_initial
+              Type: decimal(28,6)
+            - Name: meld
+              Type: double
+            - Name: rrt
+              Type: int
+            - Name: creatinine_max
+              Type: double
+            - Name: bilirubin_total_max
+              Type: double
+            - Name: inr_max
+              Type: double
+            - Name: sodium_min
+              Type: double
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/derived/meld/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
+  derivedmilrinone:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv derived_milrinone table
+        Name: derived_milrinone
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: stay_id
+              Type: int
+            - Name: linkorderid
+              Type: int
+            - Name: vaso_rate
+              Type: double
+            - Name: vaso_amount
+              Type: double
+            - Name: starttime
+              Type: timestamp
+            - Name: endtime
+              Type: timestamp
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/derived/milrinone/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
+  derivedneuroblock:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv derived_neuroblock table
+        Name: derived_neuroblock
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: stay_id
+              Type: int
+            - Name: orderid
+              Type: int
+            - Name: drug_rate
+              Type: double
+            - Name: drug_amount
+              Type: double
+            - Name: starttime
+              Type: timestamp
+            - Name: endtime
+              Type: timestamp
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/derived/neuroblock/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
+  derivednorepinephrine:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv derived_norepinephrine table
+        Name: derived_norepinephrine
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: stay_id
+              Type: int
+            - Name: linkorderid
+              Type: int
+            - Name: vaso_rate
+              Type: double
+            - Name: vaso_amount
+              Type: double
+            - Name: starttime
+              Type: timestamp
+            - Name: endtime
+              Type: timestamp
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/derived/norepinephrine/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
+  derivednorepinephrineequivalentdose:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv derived_norepinephrine_equivalent_dose table
+        Name: derived_norepinephrine_equivalent_dose
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: stay_id
+              Type: int
+            - Name: starttime
+              Type: timestamp
+            - Name: endtime
+              Type: timestamp
+            - Name: norepinephrine_equivalent_dose
+              Type: decimal(28,6)
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/derived/norepinephrine_equivalent_dose/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
+  derivedoasis:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv derived_oasis table
+        Name: derived_oasis
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: subject_id
+              Type: int
+            - Name: hadm_id
+              Type: int
+            - Name: stay_id
+              Type: int
+            - Name: oasis
+              Type: int
+            - Name: oasis_prob
+              Type: decimal(28,6)
+            - Name: age
+              Type: decimal(28,6)
+            - Name: age_score
+              Type: int
+            - Name: preiculos
+              Type: decimal(28,6)
+            - Name: preiculos_score
+              Type: int
+            - Name: gcs
+              Type: double
+            - Name: gcs_score
+              Type: int
+            - Name: heartrate
+              Type: double
+            - Name: heart_rate_score
+              Type: int
+            - Name: meanbp
+              Type: double
+            - Name: mbp_score
+              Type: int
+            - Name: resprate
+              Type: double
+            - Name: resp_rate_score
+              Type: int
+            - Name: temp
+              Type: decimal(28,6)
+            - Name: temp_score
+              Type: int
+            - Name: urineoutput
+              Type: double
+            - Name: urineoutput_score
+              Type: int
+            - Name: mechvent
+              Type: int
+            - Name: mechvent_score
+              Type: int
+            - Name: electivesurgery
+              Type: int
+            - Name: electivesurgery_score
+              Type: int
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/derived/oasis/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
+  derivedoxygendelivery:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv derived_oxygen_delivery table
+        Name: derived_oxygen_delivery
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: subject_id
+              Type: int
+            - Name: stay_id
+              Type: int
+            - Name: charttime
+              Type: timestamp
+            - Name: o2_flow
+              Type: double
+            - Name: o2_flow_additional
+              Type: double
+            - Name: o2_delivery_device_1
+              Type: string
+            - Name: o2_delivery_device_2
+              Type: string
+            - Name: o2_delivery_device_3
+              Type: string
+            - Name: o2_delivery_device_4
+              Type: string
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/derived/oxygen_delivery/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
+  derivedphenylephrine:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv derived_phenylephrine table
+        Name: derived_phenylephrine
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: stay_id
+              Type: int
+            - Name: linkorderid
+              Type: int
+            - Name: vaso_rate
+              Type: double
+            - Name: vaso_amount
+              Type: double
+            - Name: starttime
+              Type: timestamp
+            - Name: endtime
+              Type: timestamp
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/derived/phenylephrine/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
+  derivedrhythm:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv derived_rhythm table
+        Name: derived_rhythm
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: subject_id
+              Type: int
+            - Name: charttime
+              Type: timestamp
+            - Name: heart_rhythm
+              Type: string
+            - Name: ectopy_type
+              Type: string
+            - Name: ectopy_frequency
+              Type: string
+            - Name: ectopy_type_secondary
+              Type: string
+            - Name: ectopy_frequency_secondary
+              Type: string
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/derived/rhythm/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
+  derivedrrt:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv derived_rrt table
+        Name: derived_rrt
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: stay_id
+              Type: int
+            - Name: charttime
+              Type: timestamp
+            - Name: dialysis_present
+              Type: int
+            - Name: dialysis_active
+              Type: int
+            - Name: dialysis_type
+              Type: string
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/derived/rrt/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
+  derivedsapsii:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv derived_sapsii table
+        Name: derived_sapsii
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: subject_id
+              Type: int
+            - Name: hadm_id
+              Type: int
+            - Name: stay_id
+              Type: int
+            - Name: starttime
+              Type: timestamp
+            - Name: endtime
+              Type: timestamp
+            - Name: sapsii
+              Type: int
+            - Name: sapsii_prob
+              Type: double
+            - Name: age_score
+              Type: int
+            - Name: hr_score
+              Type: int
+            - Name: sysbp_score
+              Type: int
+            - Name: temp_score
+              Type: int
+            - Name: pao2fio2_score
+              Type: int
+            - Name: uo_score
+              Type: int
+            - Name: bun_score
+              Type: int
+            - Name: wbc_score
+              Type: int
+            - Name: potassium_score
+              Type: int
+            - Name: sodium_score
+              Type: int
+            - Name: bicarbonate_score
+              Type: int
+            - Name: bilirubin_score
+              Type: int
+            - Name: gcs_score
+              Type: int
+            - Name: comorbidity_score
+              Type: int
+            - Name: admissiontype_score
+              Type: int
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/derived/sapsii/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
+  derivedsepsis3:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv derived_sepsis3 table
+        Name: derived_sepsis3
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: subject_id
+              Type: int
+            - Name: stay_id
+              Type: int
+            - Name: antibiotic_time
+              Type: timestamp
+            - Name: culture_time
+              Type: timestamp
+            - Name: suspected_infection_time
+              Type: timestamp
+            - Name: sofa_time
+              Type: timestamp
+            - Name: sofa_score
+              Type: int
+            - Name: respiration
+              Type: int
+            - Name: coagulation
+              Type: int
+            - Name: liver
+              Type: int
+            - Name: cardiovascular
+              Type: int
+            - Name: cns
+              Type: int
+            - Name: renal
+              Type: int
+            - Name: sepsis3
+              Type: string
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/derived/sepsis3/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
+  derivedsirs:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv derived_sirs table
+        Name: derived_sirs
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: subject_id
+              Type: int
+            - Name: hadm_id
+              Type: int
+            - Name: stay_id
+              Type: int
+            - Name: sirs
+              Type: int
+            - Name: temp_score
+              Type: int
+            - Name: heart_rate_score
+              Type: int
+            - Name: resp_score
+              Type: int
+            - Name: wbc_score
+              Type: int
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/derived/sirs/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
+  derivedsofa:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv derived_sofa table
+        Name: derived_sofa
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: stay_id
+              Type: int
+            - Name: hr
+              Type: bigint
+            - Name: starttime
+              Type: timestamp
+            - Name: endtime
+              Type: timestamp
+            - Name: pao2fio2ratio_novent
+              Type: double
+            - Name: pao2fio2ratio_vent
+              Type: double
+            - Name: rate_epinephrine
+              Type: double
+            - Name: rate_norepinephrine
+              Type: double
+            - Name: rate_dopamine
+              Type: double
+            - Name: rate_dobutamine
+              Type: double
+            - Name: meanbp_min
+              Type: double
+            - Name: gcs_min
+              Type: double
+            - Name: uo_24hr
+              Type: double
+            - Name: bilirubin_max
+              Type: double
+            - Name: creatinine_max
+              Type: double
+            - Name: platelet_min
+              Type: double
+            - Name: respiration
+              Type: int
+            - Name: coagulation
+              Type: int
+            - Name: liver
+              Type: int
+            - Name: cardiovascular
+              Type: int
+            - Name: cns
+              Type: int
+            - Name: renal
+              Type: int
+            - Name: respiration_24hours
+              Type: int
+            - Name: coagulation_24hours
+              Type: int
+            - Name: liver_24hours
+              Type: int
+            - Name: cardiovascular_24hours
+              Type: int
+            - Name: cns_24hours
+              Type: int
+            - Name: renal_24hours
+              Type: int
+            - Name: sofa_24hours
+              Type: int
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/derived/sofa/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
+  derivedsuspicionofinfection:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv derived_suspicion_of_infection table
+        Name: derived_suspicion_of_infection
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: subject_id
+              Type: int
+            - Name: stay_id
+              Type: int
+            - Name: hadm_id
+              Type: int
+            - Name: ab_id
+              Type: bigint
+            - Name: antibiotic
+              Type: string
+            - Name: antibiotic_time
+              Type: timestamp
+            - Name: suspected_infection
+              Type: int
+            - Name: suspected_infection_time
+              Type: timestamp
+            - Name: culture_time
+              Type: timestamp
+            - Name: specimen
+              Type: string
+            - Name: positive_culture
+              Type: int
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/derived/suspicion_of_infection/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
+  derivedurineoutput:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv derived_urine_output table
+        Name: derived_urine_output
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: stay_id
+              Type: int
+            - Name: charttime
+              Type: timestamp
+            - Name: urineoutput
+              Type: double
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/derived/urine_output/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
+  derivedurineoutputrate:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv derived_urine_output_rate table
+        Name: derived_urine_output_rate
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: stay_id
+              Type: int
+            - Name: charttime
+              Type: timestamp
+            - Name: weight
+              Type: double
+            - Name: uo
+              Type: double
+            - Name: urineoutput_6hr
+              Type: double
+            - Name: urineoutput_12hr
+              Type: double
+            - Name: urineoutput_24hr
+              Type: double
+            - Name: uo_mlkghr_6hr
+              Type: decimal(28,6)
+            - Name: uo_mlkghr_12hr
+              Type: decimal(28,6)
+            - Name: uo_mlkghr_24hr
+              Type: decimal(28,6)
+            - Name: uo_tm_6hr
+              Type: decimal(28,6)
+            - Name: uo_tm_12hr
+              Type: decimal(28,6)
+            - Name: uo_tm_24hr
+              Type: decimal(28,6)
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/derived/urine_output_rate/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
+  derivedvasoactiveagent:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv derived_vasoactive_agent table
+        Name: derived_vasoactive_agent
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: stay_id
+              Type: int
+            - Name: starttime
+              Type: timestamp
+            - Name: endtime
+              Type: timestamp
+            - Name: dopamine
+              Type: double
+            - Name: epinephrine
+              Type: double
+            - Name: norepinephrine
+              Type: double
+            - Name: phenylephrine
+              Type: double
+            - Name: vasopressin
+              Type: double
+            - Name: dobutamine
+              Type: double
+            - Name: milrinone
+              Type: double
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/derived/vasoactive_agent/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
+  derivedvasopressin:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv derived_vasopressin table
+        Name: derived_vasopressin
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: stay_id
+              Type: int
+            - Name: linkorderid
+              Type: int
+            - Name: vaso_rate
+              Type: double
+            - Name: vaso_amount
+              Type: double
+            - Name: starttime
+              Type: timestamp
+            - Name: endtime
+              Type: timestamp
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/derived/vasopressin/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
+  derivedventilation:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv derived_ventilation table
+        Name: derived_ventilation
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: stay_id
+              Type: int
+            - Name: starttime
+              Type: timestamp
+            - Name: endtime
+              Type: timestamp
+            - Name: ventilation_status
+              Type: string
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/derived/ventilation/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
+  derivedventilatorsetting:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv derived_ventilator_setting table
+        Name: derived_ventilator_setting
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: subject_id
+              Type: int
+            - Name: stay_id
+              Type: int
+            - Name: charttime
+              Type: timestamp
+            - Name: respiratory_rate_set
+              Type: double
+            - Name: respiratory_rate_total
+              Type: double
+            - Name: respiratory_rate_spontaneous
+              Type: double
+            - Name: minute_volume
+              Type: double
+            - Name: tidal_volume_set
+              Type: double
+            - Name: tidal_volume_observed
+              Type: double
+            - Name: tidal_volume_spontaneous
+              Type: double
+            - Name: plateau_pressure
+              Type: double
+            - Name: peep
+              Type: double
+            - Name: fio2
+              Type: double
+            - Name: flow_rate
+              Type: double
+            - Name: ventilator_mode
+              Type: string
+            - Name: ventilator_mode_hamilton
+              Type: string
+            - Name: ventilator_type
+              Type: string
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/derived/ventilator_setting/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
+  derivedvitalsign:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv derived_vitalsign table
+        Name: derived_vitalsign
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: subject_id
+              Type: int
+            - Name: stay_id
+              Type: int
+            - Name: charttime
+              Type: timestamp
+            - Name: heart_rate
+              Type: double
+            - Name: sbp
+              Type: double
+            - Name: dbp
+              Type: double
+            - Name: mbp
+              Type: double
+            - Name: sbp_ni
+              Type: double
+            - Name: dbp_ni
+              Type: double
+            - Name: mbp_ni
+              Type: double
+            - Name: resp_rate
+              Type: double
+            - Name: temperature
+              Type: decimal(28,6)
+            - Name: temperature_site
+              Type: string
+            - Name: spo2
+              Type: double
+            - Name: glucose
+              Type: double
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/derived/vitalsign/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
+  derivedweightdurations:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId:
+        Ref: AWS::AccountId
+      DatabaseName:
+        Ref: MIMICIVDB
+      TableInput:
+        Description: mimic-iv derived_weight_durations table
+        Name: derived_weight_durations
+        Parameters:
+          classification: parquet
+          useGlueParquetWriter: "true"
+        StorageDescriptor:
+          Columns:
+            - Name: stay_id
+              Type: int
+            - Name: starttime
+              Type: timestamp
+            - Name: endtime
+              Type: timestamp
+            - Name: weight
+              Type: double
+            - Name: weight_type
+              Type: string
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: s3://mimiciv-physionet/parquet/derived/weight_durations/
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+        TableType: EXTERNAL_TABLE
   MimicivAthenaResultBucketF10DB83A:
     Type: AWS::S3::Bucket
     Properties:
@@ -1410,8 +4171,6 @@ Resources:
             - Ref: AWS::Region
     UpdateReplacePolicy: Retain
     DeletionPolicy: Retain
-    Metadata:
-      aws:cdk:path: MimicivParquetDatabaseStack/MimicivAthenaResultBucket/Resource
   MimicivAthenaWorkgroup:
     Type: AWS::Athena::WorkGroup
     Properties:
@@ -1426,9 +4185,6 @@ Resources:
               - ""
               - - s3://
                 - Ref: MimicivAthenaResultBucketF10DB83A
-    DeletionPolicy: Retain
-    Metadata:
-      aws:cdk:path: MimicivParquetDatabaseStack/MimicivAthenaWorkgroup
 Outputs:
   MIMICJupyterNotebook:
     Description: Jupyter notebook
